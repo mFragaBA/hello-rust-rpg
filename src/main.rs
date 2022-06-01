@@ -116,6 +116,7 @@ fn main() -> rltk::BError {
             fg: RGB::named(rltk::YELLOW),
             bg: RGB::named(rltk::BLACK),
         })
+        .with(Player {})
         .build();
 
     for i in 0..10 {
@@ -130,17 +131,6 @@ fn main() -> rltk::BError {
             .with(LeftMover{})
             .build();
     }
-
-    gs.ecs
-        .create_entity()
-        .with(Position { x: 40, y: 25 })
-        .with(Renderable {
-            glyph: rltk::to_cp437('@'),
-            fg: RGB::named(rltk::YELLOW),
-            bg: RGB::named(rltk::BLACK),
-        })
-        .with(Player {})
-        .build();
 
     rltk::main_loop(context, gs)
 }
