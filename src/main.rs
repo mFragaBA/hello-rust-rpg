@@ -83,6 +83,7 @@ fn player_input(gs: &mut State, ctx: &mut Rltk) {
             VirtualKeyCode::Right => try_move_player(1, 0, &mut gs.ecs),
             VirtualKeyCode::Up => try_move_player(0, -1, &mut gs.ecs),
             VirtualKeyCode::Down => try_move_player(0, 1, &mut gs.ecs),
+            VirtualKeyCode::Escape => ctx.quit(),
             _ => {}
         }
     }
@@ -92,6 +93,7 @@ fn main() -> rltk::BError {
     use rltk::RltkBuilder;
     let context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
+        .with_fullscreen(true)
         .build()?;
 
     // Initialize Game State
