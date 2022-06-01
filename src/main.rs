@@ -35,8 +35,8 @@ fn main() -> rltk::BError {
         .build()?;
 
     // Initialize Game State
-    let gs = State { 
-        World::new()
+    let mut gs = State { 
+        ecs: World::new()
     };
 
     // Register Components
