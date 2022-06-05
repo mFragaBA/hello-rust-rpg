@@ -48,6 +48,19 @@ impl Map {
     }
 }
 
+// RLTK's traits implementation
+impl rltk::Algorithm2D for Map {
+    fn dimensions(&self) -> rltk::Point {
+        rltk::Point::new(self.width, self.height)
+    }
+}
+
+impl rltk::BaseMap for Map {
+    fn is_opaque(&self, idx: usize) -> bool {
+        self.tiles[idx as usize] == TileType::Wall
+    }
+}
+
 pub fn new_map_rooms_and_corridors() -> Map {
     let mut map = Map {
         tiles : vec![TileType::Wall; 80*50],
