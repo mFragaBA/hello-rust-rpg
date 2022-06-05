@@ -16,8 +16,12 @@ use visibility_system::VisibilitySystem;
 mod monster_ai_system;
 use monster_ai_system::MonsterAI;
 
+#[derive(PartialEq, Copy, Clone)]
+pub enum RunState { Paused, Running }
+
 pub struct State {
-    pub ecs: World
+    pub ecs: World,
+    pub runstate: RunState,
 }
 
 impl State {
@@ -35,8 +39,12 @@ impl GameState for State {
         ctx.cls();
         ctx.print(1, 1, "Hello Rust World");
 
-        player_input(self, ctx);
-        self.run_systems();
+        if self.runstate == RunState::Running {
+            self.run_systems();
+            self.runstate = RunState::Paused;
+        } else {
+            self.runstate = player_input(self, ctx);
+        }
 
         draw_map(&self.ecs, ctx);
 
@@ -62,7 +70,8 @@ fn main() -> rltk::BError {
 
     // Initialize Game State
     let mut gs = State { 
-        ecs: World::new()
+        ecs: World::new(),
+        runstate : RunState::Running
     };
 
     // Register Components
