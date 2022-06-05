@@ -8,6 +8,7 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut players = ecs.write_storage::<Player>();
     let mut viewsheds = ecs.write_storage::<Viewshed>();
     let mut map = ecs.fetch_mut::<Map>();
+    let mut ppos = ecs.write_resource::<rltk::Point>();
 
     for (_player, pos, viewshed) in (&mut players, &mut positions, &mut viewsheds).join() {
         let (dst_x, dst_y) = (min(79, max(0, pos.x + delta_x)), min(49, max(0, pos.y + delta_y)));
@@ -15,6 +16,8 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
         if map.tiles[destination_idx] != TileType::Wall {
             pos.x = dst_x;
             pos.y = dst_y;
+            ppos.x = pos.x;
+            ppos.y = pos.y;
             map.tiles[destination_idx] = TileType::VisitedFloor;
 
             viewshed.dirty = true;

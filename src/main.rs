@@ -65,7 +65,7 @@ fn main() -> rltk::BError {
     use rltk::RltkBuilder;
     let context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
-        .with_fullscreen(true)
+//        .with_fullscreen(true)
         .build()?;
 
     // Initialize Game State
@@ -80,6 +80,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Monster>();
+    gs.ecs.register::<Name>();
 
     // Create Map
     let map = new_map_rooms_and_corridors();
@@ -102,16 +103,19 @@ fn main() -> rltk::BError {
 
     // Monsters - One at the center of each room
     let mut rng = rltk::RandomNumberGenerator::new();
-    for room in map.rooms.iter().skip(1) {
+    for (i, room) in map.rooms.iter().skip(1).enumerate() {
         let (x, y) = room.center();
 
         let glyph : rltk::FontCharType;
+        let name : String;
         let roll = rng.roll_dice(1, 2);
 
         if roll == 1 {
             glyph = rltk::to_cp437('g');
+            name = "Goblin".to_string();
         } else {
             glyph = rltk::to_cp437('o');
+            name = "Orc".to_string();
         }
         gs.ecs
             .create_entity()
@@ -123,11 +127,15 @@ fn main() -> rltk::BError {
             })
             .with(Viewshed{ visible_tiles: Vec::new(), range: 8, dirty: true})
             .with(Monster{})
+            .with(Name{ name: format!("{} #{}", &name, i) })
             .build();
     }
 
     // Insert map
     gs.ecs.insert(map);
+
+    // Insert player position entity. This is not encouraged for anything but player entities
+    gs.ecs.insert(rltk::Point::new(player_x, player_y));
 
     rltk::main_loop(context, gs)
 }
