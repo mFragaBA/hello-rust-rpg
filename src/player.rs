@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode, Rltk, console};
 use specs::prelude::*;
-use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats};
+use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats, WantsToMelee};
 use std::cmp::{min, max};
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
@@ -11,13 +11,17 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut map = ecs.fetch_mut::<Map>();
     let mut ppos = ecs.write_resource::<rltk::Point>();
 
-    for (_player, pos, viewshed) in (&mut players, &mut positions, &mut viewsheds).join() {
+    let entities = ecs.entities();
+    let mut wants_to_melee = ecs.write_storage::<WantsToMelee>();
+
+    for (entity, _player, pos, viewshed) in (&entities, &mut players, &mut positions, &mut viewsheds).join() {
         let (dst_x, dst_y) = (min(79, max(0, pos.x + delta_x)), min(49, max(0, pos.y + delta_y)));
         let destination_idx = map.xy_idx(dst_x, dst_y);
 
         for potential_target in map.tile_content[destination_idx].iter() {
             if let Some(_t) = combat_stats.get(*potential_target) {
                 console::log(&format!("From Hell's Hert, I stab thee!"));
+                wants_to_melee.insert(entity, WantsToMelee{ target: *potential_target }).expect("Add target failed");
                 return; // don't move after attacking
             }
         }

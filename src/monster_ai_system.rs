@@ -1,5 +1,5 @@
 use specs::prelude::*;
-use super::{Viewshed, Position, Map, Monster, Name};
+use super::{Viewshed, Position, Map, Monster, Name, RunState, WantsToMelee};
 use rltk::{field_of_view, Point, console};
 
 pub struct MonsterAI {}
@@ -8,20 +8,22 @@ impl<'a> System<'a> for MonsterAI {
     #[allow(clippy::type_complexity)]
     type SystemData = ( WriteExpect<'a, Map>,
                         ReadExpect<'a, Point>,
+                        ReadExpect<'a, Entity>,
+                        Entities<'a>,
                         WriteStorage<'a, Viewshed>,
                         ReadStorage<'a, Monster>,
-                        ReadStorage<'a, Name>,
-                        WriteStorage<'a, Position>);
+                        WriteStorage<'a, Position>,
+                        WriteStorage<'a, WantsToMelee>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut map, player_pos, mut viewshed, monster, name, mut position) = data;
+        let (mut map, player_pos, player_entity, entities, mut viewshed, monster, mut position, mut wants_to_melee) = data;
 
-        for (mut viewshed, _monster, name, mut pos) in (&mut viewshed, &monster, &name, &mut position).join() {
+        for (entity, mut viewshed, _monster, mut pos) in (&entities, &mut viewshed, &monster, &mut position).join() {
             if viewshed.visible_tiles.contains(&*player_pos) {
                 let distance = rltk::DistanceAlg::Pythagoras.distance2d(Point::new(pos.x, pos.y), *player_pos);
                 if distance < 1.5 {
                     // Attack goes here
-                    console::log(format!("{} shouts insults", name.name));
+                    wants_to_melee.insert(entity, WantsToMelee{ target: *player_entity }).expect("Unable to insert attack");
                     return;
                 }
 
