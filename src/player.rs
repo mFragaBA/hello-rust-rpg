@@ -41,7 +41,7 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
 pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
     // Player movement
     match ctx.key {
-        None => { return RunState::Paused } // Nothing Happened
+        None => { return RunState::AwaitingInput } // Nothing Happened
         Some(key) => match key {
 
             VirtualKeyCode::Left    |
@@ -74,9 +74,9 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::M => try_move_player(1, 1, &mut gs.ecs),
 
             VirtualKeyCode::Escape => ctx.quit(),
-            _ => { return RunState::Paused }
+            _ => { return RunState::AwaitingInput }
         }
     }
-    RunState::Running
+    RunState::PlayerTurn
 }
 

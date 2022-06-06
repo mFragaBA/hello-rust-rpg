@@ -9,6 +9,7 @@ impl<'a> System<'a> for MonsterAI {
     type SystemData = ( WriteExpect<'a, Map>,
                         ReadExpect<'a, Point>,
                         ReadExpect<'a, Entity>,
+                        ReadExpect<'a, RunState>,
                         Entities<'a>,
                         WriteStorage<'a, Viewshed>,
                         ReadStorage<'a, Monster>,
@@ -16,7 +17,9 @@ impl<'a> System<'a> for MonsterAI {
                         WriteStorage<'a, WantsToMelee>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut map, player_pos, player_entity, entities, mut viewshed, monster, mut position, mut wants_to_melee) = data;
+        let (mut map, player_pos, player_entity, runstate, entities, mut viewshed, monster, mut position, mut wants_to_melee) = data;
+
+       if *runstate != RunState::MonsterTurn { return; } 
 
         for (entity, mut viewshed, _monster, mut pos) in (&entities, &mut viewshed, &monster, &mut position).join() {
             if viewshed.visible_tiles.contains(&*player_pos) {

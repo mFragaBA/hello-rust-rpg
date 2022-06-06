@@ -19,7 +19,7 @@ impl<'a> System<'a> for DamageSystem {
 }
 
 /// deletes all the dead entities and returns true if any died, false otherwise
-pub fn delete_the_dead(ecs: &mut World) -> bool {
+pub fn delete_the_dead(ecs: &mut World) {
     let mut dead : Vec<Entity> = Vec::new();
 
     // Using a scope to make the borrow checker happy
@@ -41,6 +41,4 @@ pub fn delete_the_dead(ecs: &mut World) -> bool {
     for victim in &dead {
         ecs.delete_entity(*victim).expect("Unable to delete entity!");
     }
-
-    !dead.is_empty()
 }

@@ -23,11 +23,15 @@ mod damage_system;
 use damage_system::DamageSystem;
 
 #[derive(PartialEq, Copy, Clone)]
-pub enum RunState { Paused, Running }
+pub enum RunState { 
+    AwaitingInput,
+    PreRun,
+    PlayerTurn,
+    MonsterTurn,
+}
 
 pub struct State {
     pub ecs: World,
-    pub runstate: RunState,
 }
 
 impl State {
@@ -49,21 +53,36 @@ impl State {
 impl GameState for State {
     fn tick(&mut self, ctx: &mut Rltk) {
         ctx.cls();
-        ctx.print(1, 1, "Hello Rust World");
-
-        if self.runstate == RunState::Running {
-            self.run_systems();
-            let any_deaths = damage_system::delete_the_dead(&mut self.ecs);
-            if any_deaths {
-                // re-run the indexing system if there were any deaths
-                let mut map_index = MapIndexingSystem{};
-                map_index.run_now(&self.ecs);
-            }
-            self.runstate = RunState::Paused;
-        } else {
-            self.runstate = player_input(self, ctx);
+        let mut newrunstate;
+        {
+            let runstate = self.ecs.fetch::<RunState>();
+            newrunstate = *runstate;
         }
 
+        match newrunstate {
+            RunState::PreRun => {
+                self.run_systems();
+                newrunstate = RunState::AwaitingInput;
+            }
+            RunState::AwaitingInput => {
+                newrunstate = player_input(self, ctx);
+            }
+            RunState::PlayerTurn => {
+                self.run_systems();
+                newrunstate = RunState::MonsterTurn;
+            }
+            RunState::MonsterTurn => {
+                self.run_systems();
+                newrunstate = RunState::AwaitingInput;
+            }
+        }
+
+        {
+            let mut runstatewriter = self.ecs.write_resource::<RunState>();
+            *runstatewriter = newrunstate;
+        }
+
+        damage_system::delete_the_dead(&mut self.ecs);
 
         draw_map(&self.ecs, ctx);
 
@@ -90,7 +109,6 @@ fn main() -> rltk::BError {
     // Initialize Game State
     let mut gs = State { 
         ecs: World::new(),
-        runstate : RunState::Running
     };
 
     // Register Components
@@ -164,6 +182,9 @@ fn main() -> rltk::BError {
     // Insert player position and entity. This is not encouraged for anything but player entities
     gs.ecs.insert(rltk::Point::new(player_x, player_y));
     gs.ecs.insert(player_entity);
+
+    // Turn RunState into a resource
+    gs.ecs.insert(RunState::PreRun);
 
     rltk::main_loop(context, gs)
 }
