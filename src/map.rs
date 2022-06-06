@@ -84,14 +84,21 @@ impl rltk::BaseMap for Map {
 
         // Cardinal directions
         let directions = [
-            (x-1, y, idx-1), // left
-            (x+1, y, idx+1), // right
-            (x, y-1, idx-w), // up
-            (x, y+1, idx+w)  // down
+            // Cardinal directions
+            (x-1, y, idx-1, 1.0), // left
+            (x+1, y, idx+1, 1.0), // right
+            (x, y-1, idx-w, 1.0), // up
+            (x, y+1, idx+w, 1.0), // down
+                             
+            // Diagonals
+            (x-1, y-1, idx-w-1, 1.45), // top left
+            (x+1, y-1, idx-w+1, 1.45), // top right
+            (x-1, y+1, idx+w-1, 1.45), // bottom left
+            (x+1, y+1, idx+w+1, 1.45), // bottom right
         ];
 
-        for (xdir, ydir, dir_idx) in directions {
-            if self.is_exit_valid(xdir, ydir) { exits.push((dir_idx, 1.0)) }
+        for (xdir, ydir, dir_idx, dist) in directions {
+            if self.is_exit_valid(xdir, ydir) { exits.push((dir_idx, dist)) }
         }
         exits
     }
