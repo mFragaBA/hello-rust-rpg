@@ -1,6 +1,6 @@
-use rltk::{VirtualKeyCode, Rltk, console};
+use rltk::{VirtualKeyCode, Rltk, console, Point};
 use specs::prelude::*;
-use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats, WantsToMelee};
+use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats, WantsToMelee, WantsToPickupItem, GameLog, Item};
 use std::cmp::{min, max};
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
@@ -34,6 +34,30 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
             map.tiles[destination_idx] = TileType::VisitedFloor;
 
             viewshed.dirty = true;
+        }
+    }
+}
+
+fn get_item(ecs: &mut World) {
+    let player_pos = ecs.fetch::<Point>();
+    let player_entity = ecs.fetch::<Entity>();
+    let entities = ecs.entities();
+    let items = ecs.read_storage::<Item>();
+    let positions = ecs.read_storage::<Position>();
+    let mut gamelog = ecs.fetch_mut::<GameLog>();
+
+    let mut target_item: Option<Entity> = None;
+    for (item_entity, _item, position) in (&entities, &items, &positions).join() {
+        if position.x == player_pos.x && position.y == player_pos.y {
+            target_item = Some(item_entity);
+        }
+    }
+
+    match target_item {
+        None => gamelog.entries.push("There is nothing here to pick up.".to_string()),
+        Some(item) => {
+            let mut pickup = ecs.write_storage::<WantsToPickupItem>();
+            pickup.insert(*player_entity, WantsToPickupItem{ collected_by: *player_entity, item}).expect("Unable to pick up item");
         }
     }
 }
@@ -72,6 +96,12 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             
             VirtualKeyCode::Numpad1 |
             VirtualKeyCode::M => try_move_player(1, 1, &mut gs.ecs),
+
+            // Grabbing
+            VirtualKeyCode::G => get_item(&mut gs.ecs),
+
+            // Open Inventory
+            VirtualKeyCode::I => return RunState::ShowInventory,
 
             VirtualKeyCode::Escape => ctx.quit(),
             _ => { return RunState::AwaitingInput }

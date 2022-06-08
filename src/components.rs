@@ -44,6 +44,13 @@ pub struct CombatStats {
     pub power : i32
 }
 
+#[derive(Component, Debug)]
+pub struct MagicStats {
+    pub max_mana : i32,
+    pub mana : i32,
+    pub power : i32,
+}
+
 #[derive(Component, Debug, Clone)]
 pub struct WantsToMelee {
     pub target : Entity
@@ -63,4 +70,28 @@ impl SufferDamage {
             store.insert(victim, dmg).expect("Unable to insert damage");
         }
     }
+}
+
+#[derive(Component, Debug)]
+pub struct Item {}
+
+#[derive(Component, Debug)]
+pub struct HealthPotion {
+    pub heal_amount: i32,
+}
+
+#[derive(Component, Debug)]
+pub struct ManaPotion {
+    pub mana_amount: i32,
+}
+
+#[derive(Component, Debug, Clone)]
+pub struct InBackpack {
+    pub owner: Entity,
+}
+
+#[derive(Component, Debug, Clone)]
+pub struct WantsToPickupItem {
+    pub collected_by: Entity,
+    pub item: Entity,
 }
