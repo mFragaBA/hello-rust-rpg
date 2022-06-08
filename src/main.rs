@@ -10,6 +10,10 @@ mod player;
 use player::*;
 mod rect;
 pub use rect::*;
+mod gui;
+mod gamelog;
+use gamelog::GameLog;
+mod spawner;
 
 mod visibility_system;
 use visibility_system::VisibilitySystem;
@@ -96,15 +100,19 @@ impl GameState for State {
                 ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
             }
         }
+
+        gui::draw_ui(&self.ecs, ctx);
     }
 }
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
-    let context = RltkBuilder::simple80x50()
+    let mut context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
-//        .with_fullscreen(true)
+        //.with_fullscreen(true)
         .build()?;
+
+    context.with_post_scanlines(true);
 
     // Initialize Game State
     let mut gs = State { 
@@ -129,51 +137,16 @@ fn main() -> rltk::BError {
 
     // ===== ENTITY CREATION =====
     
+    // Add a Random Number Generator as a resource
+    gs.ecs.insert(rltk::RandomNumberGenerator::new());
+    
     // Player 
-    let player_entity = gs.ecs
-        .create_entity()
-        .with(Position { x : player_x, y: player_y})
-        .with(Renderable {
-            glyph: rltk::to_cp437('@'),
-            fg: RGB::named(rltk::YELLOW),
-            bg: RGB::named(rltk::BLACK),
-        })
-        .with(Player {})
-        .with(Viewshed{ visible_tiles: Vec::new(), range : 8, dirty: true })
-        .with(Name{name: "Sir Player of Nottingham".to_string() })
-        .with(CombatStats{ max_hp: 32, hp: 32, defense: 2, power: 5 })
-        .build();
-
+    let player_entity = spawner::spawn_player(&mut gs.ecs, player_x, player_y);
+    
     // Monsters - One at the center of each room
-    let mut rng = rltk::RandomNumberGenerator::new();
     for (i, room) in map.rooms.iter().skip(1).enumerate() {
         let (x, y) = room.center();
-
-        let glyph : rltk::FontCharType;
-        let name : String;
-        let roll = rng.roll_dice(1, 2);
-
-        if roll == 1 {
-            glyph = rltk::to_cp437('g');
-            name = "Goblin".to_string();
-        } else {
-            glyph = rltk::to_cp437('o');
-            name = "Orc".to_string();
-        }
-        gs.ecs
-            .create_entity()
-            .with(Position {x: x, y: y})
-            .with(Renderable {
-                glyph: glyph,
-                fg: RGB::named(rltk::RED),
-                bg: RGB::named(rltk::BLACK)
-            })
-            .with(Viewshed{ visible_tiles: Vec::new(), range: 8, dirty: true})
-            .with(Monster{})
-            .with(Name{ name: format!("{} #{}", &name, i) })
-            .with(BlocksTile{})
-            .with(CombatStats{ max_hp: 16, hp: 16, defense: 1, power: 4 })
-            .build();
+        spawner::spawn_random_monster(&mut gs.ecs, x, y);
     }
 
     // Insert map
@@ -185,6 +158,9 @@ fn main() -> rltk::BError {
 
     // Turn RunState into a resource
     gs.ecs.insert(RunState::PreRun);
+    
+    // Add gamelog as a resource
+    gs.ecs.insert(GameLog{ entries : vec!["Welcome to Rusty Roguelike".to_string()] });
 
     rltk::main_loop(context, gs)
 }

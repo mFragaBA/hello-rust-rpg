@@ -8,6 +8,10 @@ pub enum TileType {
     Wall, Floor, VisitedFloor
 }
 
+const MAP_WIDTH : usize = 80;
+const MAP_HEIGHT : usize = 43;
+const MAP_COUNT : usize = MAP_HEIGHT * MAP_WIDTH;
+
 pub struct Map {
     pub tiles : Vec<TileType>,
     pub rooms : Vec<Rect>,
@@ -37,7 +41,7 @@ impl Map {
     pub fn apply_horizontal_tunnel(&mut self, x1: i32, x2: i32, y: i32) {
         for x in min(x1, x2) ..= max(x1, x2) {
             let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < 80*50 {
+            if idx > 0 && idx < (self.width*self.height) as usize {
                 self.tiles[idx as usize] = TileType::Floor;
             }
         }
@@ -120,14 +124,14 @@ impl rltk::BaseMap for Map {
 
 pub fn new_map_rooms_and_corridors() -> Map {
     let mut map = Map {
-        tiles : vec![TileType::Wall; 80*50],
+        tiles : vec![TileType::Wall; MAP_COUNT],
         rooms : Vec::new(),
-        width : 80,
-        height : 50,
-        revealed_tiles : vec![false; 80*50],
-        visible_tiles : vec![false; 80*50],
-        blocked : vec![false; 80*50],
-        tile_content: vec![Vec::new(); 80*50]
+        width : MAP_WIDTH as i32,
+        height : MAP_HEIGHT as i32,
+        revealed_tiles : vec![false; MAP_COUNT],
+        visible_tiles : vec![false; MAP_COUNT],
+        blocked : vec![false; MAP_COUNT],
+        tile_content: vec![Vec::new(); MAP_COUNT]
     };
 
     const MAX_ROOMS : i32 = 32;
@@ -162,13 +166,6 @@ pub fn new_map_rooms_and_corridors() -> Map {
             map.rooms.push(new_room)
         }
     }
-
-//    let room1 = Rect::new(20, 15, 10, 15);
-//    let room2 = Rect::new(35, 15, 10, 15);
-//
-//    apply_room_to_map(&room1, &mut map);
-//    apply_room_to_map(&room2, &mut map);
-//    apply_horizontal_tunnel(&mut map, 25, 40, 23);
 
     map
 }
@@ -205,7 +202,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
         }
         // move coordinates
         x += 1;
-        if x > 79 {
+        if x > MAP_WIDTH - 1 {
             x = 0;
             y += 1;
         }
