@@ -14,6 +14,7 @@ pub fn spawn_player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
             glyph: rltk::to_cp437('@'),
             fg: RGB::named(rltk::YELLOW),
             bg: RGB::named(rltk::BLACK),
+            render_order: 0,
         })
         .with(Player {})
         .with(Viewshed{ visible_tiles: Vec::new(), range : 8, dirty: true })
@@ -47,6 +48,7 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
             glyph,
             fg: RGB::named(rltk::RED),
             bg: RGB::named(rltk::BLACK),
+            render_order: 1,
         })
         .with(Viewshed{ visible_tiles: Vec::new(), range : 8, dirty: true })
         .with(Monster{})
@@ -101,7 +103,6 @@ pub fn spawn_room(ecs: &mut World, room: &Rect) {
     }
 
     // Actually spawn spawn the items
-    for idx in monster_spawn_points.iter() {
     for idx in item_spawn_points.iter() {
         let x = *idx % MAP_WIDTH;
         let y = *idx / MAP_WIDTH;
@@ -158,6 +159,7 @@ fn health_potion<S: ToString>(ecs: &mut World, x: i32, y: i32, name: S, heal_amo
             glyph: rltk::to_cp437('¡'),
             fg: RGB::named(rltk::RED),
             bg: RGB::named(rltk::BLACK),
+            render_order: 2
         })
         .with(Name{ name: name.to_string() })
         .with(Item{})
@@ -176,6 +178,7 @@ fn mana_potion<S: ToString>(ecs: &mut World, x: i32, y: i32, name: S, mana_amoun
             glyph: rltk::to_cp437('¡'),
             fg: RGB::named(rltk::MAGENTA),
             bg: RGB::named(rltk::BLACK),
+            render_order: 2
         })
         .with(Name{ name: name.to_string() })
         .with(Item{})
