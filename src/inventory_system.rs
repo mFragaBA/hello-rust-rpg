@@ -1,5 +1,5 @@
 use specs::prelude::*;
-use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, HealthPotion, ManaPotion, WantsToDrinkPotion};
+use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, ProvidesHealing, ProvidesManaRestore, WantsToUseItem, Consumable};
 
 pub struct ItemCollectionSystem {}
 
@@ -30,48 +30,57 @@ impl<'a> System<'a> for ItemCollectionSystem {
     }
 }
 
-pub struct PotionUseSystem {}
+pub struct ItemUseSystem {}
 
-impl<'a> System<'a> for PotionUseSystem {
+impl<'a> System<'a> for ItemUseSystem {
 #[allow(clippy::type_complexity)]
     type SystemData = ( ReadExpect<'a, Entity>,
                         WriteExpect<'a, GameLog>,
                         Entities<'a>,
-                        WriteStorage<'a, WantsToDrinkPotion>,
+                        WriteStorage<'a, WantsToUseItem>,
                         ReadStorage<'a, Name>,
-                        ReadStorage<'a, HealthPotion>,
-                        ReadStorage<'a, ManaPotion>,
+                        ReadStorage<'a, Consumable>,
+                        ReadStorage<'a, ProvidesHealing>,
+                        ReadStorage<'a, ProvidesManaRestore>,
                         WriteStorage<'a, CombatStats>,
                         WriteStorage<'a, MagicStats>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (player_entity, mut gamelog, entities, mut wants_drink, names, health_potions, mana_potions, mut combat_stats, mut magic_stats) = data;
+        let (player_entity, mut gamelog, entities, mut useitem, names, consumables, healing, mana_restoring, mut combat_stats, mut magic_stats) = data;
 
-        // Drink Health Potions
-        for (entity, drink, stats) in (&entities, &wants_drink, &mut combat_stats).join() {
-            let potion = health_potions.get(drink.potion);
-            if let Some(potion) = potion {
-                stats.hp = i32::min(stats.max_hp, stats.hp + potion.heal_amount);
+        // Use consumables
+        for (entity, useitem, stats) in (&entities, &useitem, &mut combat_stats).join() {
+            // Maybe Healing?
+            let item_heals = healing.get(useitem.item);
+            if let Some(healer) = item_heals {
+                stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
                 if entity == *player_entity {
-                    gamelog.entries.push(format!("You drink the {}, healing {} hp", names.get(drink.potion).unwrap().name, potion.heal_amount));
+                    gamelog.entries.push(format!("You drink the {}, healing {} hp", names.get(useitem.item).unwrap().name, healer.heal_amount));
                 }
-                entities.delete(drink.potion).expect("Health Potion Delete")
+            }
+
+        }
+
+        for (entity, useitem, stats) in (&entities, &useitem, &mut magic_stats).join() {
+            // Maybe Mana Restoring?
+            let mana_restores = mana_restoring.get(useitem.item);
+            if let Some(mana_restorer) = mana_restores {
+                stats.mana = i32::min(stats.max_mana, stats.mana + mana_restorer.mana_amount);
+                if entity == *player_entity {
+                    gamelog.entries.push(format!("You drink the {}, restoring {} mana", names.get(useitem.item).unwrap().name, mana_restorer.mana_amount));
+                }
             }
         }
 
-        // Drink Mana Potions
-        for (entity, drink, stats) in (&entities, &wants_drink, &mut magic_stats).join() {
-            let potion = mana_potions.get(drink.potion);
-            if let Some(potion) = potion {
-                stats.mana = i32::min(stats.max_mana, stats.mana + potion.mana_amount);
-                if entity == *player_entity {
-                    gamelog.entries.push(format!("You drink the {}, recovering {} mana", names.get(drink.potion).unwrap().name, potion.mana_amount));
-                }
-                entities.delete(drink.potion).expect("Health Potion Delete")
+        // Consume consumables
+        for useitem in (&useitem).join() {
+            let consumable = consumables.get(useitem.item);
+            if consumable.is_some() {
+                entities.delete(useitem.item).expect("Delete Failed");
             }
         }
 
-        wants_drink.clear();
+        useitem.clear();
     }
 }
 

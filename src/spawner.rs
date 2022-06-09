@@ -1,6 +1,6 @@
 use rltk::{ RGB, RandomNumberGenerator };
 use specs::prelude::*;
-use super::{CombatStats, MagicStats, Player, Renderable, Name, Position, Viewshed, Monster, BlocksTile, Rect, MAP_WIDTH, MAP_HEIGHT, HealthPotion, ManaPotion, Item};
+use super::{CombatStats, MagicStats, Player, Renderable, Name, Position, Viewshed, Monster, BlocksTile, Rect, MAP_WIDTH, MAP_HEIGHT, ProvidesHealing, ProvidesManaRestore, Item, Consumable};
 
 const MAX_MONSTERS : i32 = 4;
 const MAX_ITEMS : i32 = 2;
@@ -163,7 +163,8 @@ fn health_potion<S: ToString>(ecs: &mut World, x: i32, y: i32, name: S, heal_amo
         })
         .with(Name{ name: name.to_string() })
         .with(Item{})
-        .with(HealthPotion{ heal_amount: heal_amount })
+        .with(Consumable{})
+        .with(ProvidesHealing{ heal_amount: heal_amount })
         .build();
 }
 
@@ -182,7 +183,8 @@ fn mana_potion<S: ToString>(ecs: &mut World, x: i32, y: i32, name: S, mana_amoun
         })
         .with(Name{ name: name.to_string() })
         .with(Item{})
-        .with(ManaPotion{ mana_amount: mana_amount })
+        .with(Consumable{})
+        .with(ProvidesManaRestore{ mana_amount: mana_amount })
         .build();
 }
 
