@@ -103,6 +103,9 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             // Open Inventory
             VirtualKeyCode::I => return RunState::ShowInventory,
 
+            // Open Delete Menu
+            VirtualKeyCode::D => return RunState::ShowDropItem,
+
             VirtualKeyCode::Escape => ctx.quit(),
             _ => { return RunState::AwaitingInput }
         }

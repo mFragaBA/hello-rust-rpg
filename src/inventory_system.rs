@@ -1,5 +1,5 @@
 use specs::prelude::*;
-use super::{WantsToPickupItem, Name, InBackpack, Position, gamelog::GameLog};
+use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, HealthPotion, ManaPotion, WantsToDrinkPotion};
 
 pub struct ItemCollectionSystem {}
 
@@ -27,5 +27,84 @@ impl<'a> System<'a> for ItemCollectionSystem {
         }
 
         wants_pickup.clear();
+    }
+}
+
+pub struct PotionUseSystem {}
+
+impl<'a> System<'a> for PotionUseSystem {
+#[allow(clippy::type_complexity)]
+    type SystemData = ( ReadExpect<'a, Entity>,
+                        WriteExpect<'a, GameLog>,
+                        Entities<'a>,
+                        WriteStorage<'a, WantsToDrinkPotion>,
+                        ReadStorage<'a, Name>,
+                        ReadStorage<'a, HealthPotion>,
+                        ReadStorage<'a, ManaPotion>,
+                        WriteStorage<'a, CombatStats>,
+                        WriteStorage<'a, MagicStats>);
+
+    fn run(&mut self, data: Self::SystemData) {
+        let (player_entity, mut gamelog, entities, mut wants_drink, names, health_potions, mana_potions, mut combat_stats, mut magic_stats) = data;
+
+        // Drink Health Potions
+        for (entity, drink, stats) in (&entities, &wants_drink, &mut combat_stats).join() {
+            let potion = health_potions.get(drink.potion);
+            if let Some(potion) = potion {
+                stats.hp = i32::min(stats.max_hp, stats.hp + potion.heal_amount);
+                if entity == *player_entity {
+                    gamelog.entries.push(format!("You drink the {}, healing {} hp", names.get(drink.potion).unwrap().name, potion.heal_amount));
+                }
+                entities.delete(drink.potion).expect("Health Potion Delete")
+            }
+        }
+
+        // Drink Mana Potions
+        for (entity, drink, stats) in (&entities, &wants_drink, &mut magic_stats).join() {
+            let potion = mana_potions.get(drink.potion);
+            if let Some(potion) = potion {
+                stats.mana = i32::min(stats.max_mana, stats.mana + potion.mana_amount);
+                if entity == *player_entity {
+                    gamelog.entries.push(format!("You drink the {}, recovering {} mana", names.get(drink.potion).unwrap().name, potion.mana_amount));
+                }
+                entities.delete(drink.potion).expect("Health Potion Delete")
+            }
+        }
+
+        wants_drink.clear();
+    }
+}
+
+pub struct ItemDropSystem {}
+
+impl<'a> System<'a> for ItemDropSystem {
+    #[allow(clippy::type_complexity)]
+    type SystemData = ( ReadExpect<'a, Entity>,
+                        WriteExpect<'a, GameLog>,
+                        Entities<'a>,
+                        WriteStorage<'a, WantsToDropItem>,
+                        ReadStorage<'a, Name>,
+                        WriteStorage<'a, Position>,
+                        WriteStorage<'a, InBackpack>);
+
+    fn run(&mut self, data: Self::SystemData) {
+        let (player_entity, mut gamelog, entities, mut wants_drop, names, mut positions, mut backpack) = data;
+
+        for (entity, to_drop) in (&entities, &wants_drop).join() {
+            let mut dropper_pos : Position = Position{x: 0, y: 0};
+            {
+                let dropped_pos = positions.get(entity).unwrap();
+                dropper_pos.x = dropped_pos.x;
+                dropper_pos.y = dropped_pos.y;
+            }
+            positions.insert(to_drop.item, Position{ x: dropper_pos.x, y: dropper_pos.y }).expect("Unable to insert position");
+            backpack.remove(to_drop.item);
+
+            if entity == *player_entity {
+                gamelog.entries.push(format!("You drop the {}.", names.get(to_drop.item).unwrap().name));
+            }
+        }
+
+        wants_drop.clear();
     }
 }

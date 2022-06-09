@@ -26,7 +26,7 @@ use melee_combat_system::MeleeCombatSystem;
 mod damage_system;
 use damage_system::DamageSystem;
 mod inventory_system;
-use inventory_system::ItemCollectionSystem;
+use inventory_system::{ItemCollectionSystem, PotionUseSystem, ItemDropSystem};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState { 
@@ -35,6 +35,7 @@ pub enum RunState {
     PlayerTurn,
     MonsterTurn,
     ShowInventory,
+    ShowDropItem,
 }
 
 pub struct State {
@@ -55,6 +56,10 @@ impl State {
         dmg_system.run_now(&self.ecs);
         let mut pickup = ItemCollectionSystem{};
         pickup.run_now(&self.ecs);
+        let mut potions = PotionUseSystem{};
+        potions.run_now(&self.ecs);
+        let mut drop_items = ItemDropSystem{};
+        drop_items.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
@@ -73,6 +78,7 @@ impl GameState for State {
         match newrunstate {
             RunState::PreRun => {
                 self.run_systems();
+                self.ecs.maintain();
                 newrunstate = RunState::AwaitingInput;
             }
             RunState::AwaitingInput => {
@@ -80,15 +86,36 @@ impl GameState for State {
             }
             RunState::PlayerTurn => {
                 self.run_systems();
+                self.ecs.maintain();
                 newrunstate = RunState::MonsterTurn;
             }
             RunState::MonsterTurn => {
                 self.run_systems();
+                self.ecs.maintain();
                 newrunstate = RunState::AwaitingInput;
             }
             RunState::ShowInventory => {
-                if gui::show_inventory(self, ctx) == gui::ItemMenuResult::Cancel {
-                    newrunstate = RunState::AwaitingInput;
+                match gui::show_inventory(self, ctx) {
+                    (gui::ItemMenuResult::Cancel, _) => newrunstate = RunState::AwaitingInput,
+                    (gui::ItemMenuResult::NoResponse, _) => {}
+                    (gui::ItemMenuResult::Selected, entity) => {
+                        let entity = entity.unwrap();
+                        let mut intent = self.ecs.write_storage::<WantsToDrinkPotion>();
+                        intent.insert(*self.ecs.fetch::<Entity>(), WantsToDrinkPotion{ potion: entity }).expect("Unable to insert intent");
+                        newrunstate = RunState::PlayerTurn;
+                    }
+                }
+            }
+            RunState::ShowDropItem => {
+                match gui::show_inventory(self, ctx) {
+                    (gui::ItemMenuResult::Cancel, _) => newrunstate = RunState::AwaitingInput,
+                    (gui::ItemMenuResult::NoResponse, _) => {}
+                    (gui::ItemMenuResult::Selected, entity) => {
+                        let entity = entity.unwrap();
+                        let mut intent = self.ecs.write_storage::<WantsToDropItem>();
+                        intent.insert(*self.ecs.fetch::<Entity>(), WantsToDropItem{ item: entity }).expect("Unable to insert intent");
+                        newrunstate = RunState::PlayerTurn;
+                    }
                 }
             }
         }
@@ -142,10 +169,12 @@ fn main() -> rltk::BError {
     gs.ecs.register::<SufferDamage>();
     gs.ecs.register::<WantsToMelee>();
     gs.ecs.register::<WantsToPickupItem>();
+    gs.ecs.register::<WantsToDropItem>();
     gs.ecs.register::<Item>();
     gs.ecs.register::<HealthPotion>();
     gs.ecs.register::<ManaPotion>();
     gs.ecs.register::<InBackpack>();
+    gs.ecs.register::<WantsToDrinkPotion>();
 
     // Create Map
     let map = new_map_rooms_and_corridors();
