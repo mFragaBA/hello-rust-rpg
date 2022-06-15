@@ -1,6 +1,5 @@
 use specs::prelude::*;
-use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, ProvidesHealing, ProvidesManaRestore, WantsToUseItem, Consumable};
-
+use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, ProvidesHealing, ProvidesManaRestore, WantsToUseItem, Consumable, InflictsDamage, SufferDamage, Map, AreaOfEffect, Confusion};
 pub struct ItemCollectionSystem {}
 
 impl<'a> System<'a> for ItemCollectionSystem {
@@ -35,6 +34,7 @@ pub struct ItemUseSystem {}
 impl<'a> System<'a> for ItemUseSystem {
 #[allow(clippy::type_complexity)]
     type SystemData = ( ReadExpect<'a, Entity>,
+                        ReadExpect<'a, Map>,
                         WriteExpect<'a, GameLog>,
                         Entities<'a>,
                         WriteStorage<'a, WantsToUseItem>,
@@ -43,33 +43,109 @@ impl<'a> System<'a> for ItemUseSystem {
                         ReadStorage<'a, ProvidesHealing>,
                         ReadStorage<'a, ProvidesManaRestore>,
                         WriteStorage<'a, CombatStats>,
-                        WriteStorage<'a, MagicStats>);
+                        WriteStorage<'a, MagicStats>,
+                        ReadStorage<'a, InflictsDamage>,
+                        WriteStorage<'a, SufferDamage>,
+                        ReadStorage<'a, AreaOfEffect>,
+                        WriteStorage<'a, Confusion>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (player_entity, mut gamelog, entities, mut useitem, names, consumables, healing, mana_restoring, mut combat_stats, mut magic_stats) = data;
+        let (player_entity, map, mut gamelog, entities, mut useitem, names, consumables, healing, mana_restoring, mut combat_stats, mut magic_stats, inflict_damage, mut suffer_damage, aoe, mut confused) = data;
+
+        // Targeting
+        let mut targets : Vec<Entity> = Vec::new();
+        for (entity, useitem, stats) in (&entities, &useitem, &mut combat_stats).join() {
+            match useitem.target {
+                None => { targets.push( *player_entity ); }
+                Some(target) => {
+                    let area_effect = aoe.get(useitem.item);
+                    match area_effect {
+                        None => {
+                            // Single target in tile
+                            let idx = map.xy_idx(target.x, target.y);
+                            for mob in map.tile_content[idx].iter() {
+                                targets.push(*mob);
+                            }
+                        }
+                        Some(area_effect) => {
+                            // AoE
+                            let mut blast_tiles = rltk::field_of_view(target, area_effect.radius, &*map);
+                            blast_tiles.retain(|p| p.x > 0 && p.x < map.width-1 && p.y > 0 && p.y < map.height-1 );
+                            for tile_idx in blast_tiles.iter() {
+                                let idx = map.xy_idx(tile_idx.x, tile_idx.y);
+                                for mob in map.tile_content[idx].iter() {
+                                    targets.push(*mob);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Use consumables
-        for (entity, useitem, stats) in (&entities, &useitem, &mut combat_stats).join() {
+        for (entity, useitem) in (&entities, &useitem).join() {
             // Maybe Healing?
-            let item_heals = healing.get(useitem.item);
-            if let Some(healer) = item_heals {
-                stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
-                if entity == *player_entity {
-                    gamelog.entries.push(format!("You drink the {}, healing {} hp", names.get(useitem.item).unwrap().name, healer.heal_amount));
+            if let Some(healer) = healing.get(useitem.item) {
+                for target in targets.iter() {
+                    let stats = combat_stats.get_mut(*target);
+                    if let Some(stats) = stats {
+                        stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
+                        if entity == *player_entity {
+                            gamelog.entries.push(format!("You drink the {}, healing {} hp", names.get(useitem.item).unwrap().name, healer.heal_amount));
+                        }
+                    }
                 }
             }
 
         }
 
-        for (entity, useitem, stats) in (&entities, &useitem, &mut magic_stats).join() {
+        for (entity, useitem) in (&entities, &useitem).join() {
             // Maybe Mana Restoring?
-            let mana_restores = mana_restoring.get(useitem.item);
-            if let Some(mana_restorer) = mana_restores {
-                stats.mana = i32::min(stats.max_mana, stats.mana + mana_restorer.mana_amount);
-                if entity == *player_entity {
-                    gamelog.entries.push(format!("You drink the {}, restoring {} mana", names.get(useitem.item).unwrap().name, mana_restorer.mana_amount));
+            if let Some(mana_restorer) = mana_restoring.get(useitem.item) {
+                for target in targets.iter() {
+                    let stats = magic_stats.get_mut(*target);
+                    if let Some(stats) = stats {
+                        stats.mana = i32::min(stats.max_mana, stats.mana + mana_restorer.mana_amount);
+                        if entity == *player_entity {
+                            gamelog.entries.push(format!("You drink the {}, restoring {} mana", names.get(useitem.item).unwrap().name, mana_restorer.mana_amount));
+                        }
+                    }
                 }
             }
+        }
+
+        for (entity, useitem) in (&entities, &useitem).join() {
+            // Deals Damage?
+            if let Some(damage) = inflict_damage.get(useitem.item) {
+                for mob in targets.iter() {
+                    SufferDamage::new_damage(&mut suffer_damage, *mob, damage.damage);
+                    if entity == *player_entity {
+                        let mob_name = names.get(*mob).unwrap();
+                        let item_name = names.get(useitem.item).unwrap();
+                        gamelog.entries.push(format!("You use {} on {}, inflicting {} hp.", item_name.name, mob_name.name, damage.damage));
+                    }
+                }
+            }
+        }
+
+        let mut add_confusion = Vec::new(); 
+        for (entity, useitem) in (&entities, &useitem).join() {
+            // Applies Confusion?
+            if let Some(confusion) = confused.get(useitem.item) {
+                for mob in targets.iter() {
+                    add_confusion.push( (*mob, confusion.turns) );
+                    if entity == *player_entity {
+                        let mob_name = names.get(*mob).unwrap();
+                        let item_name = names.get(useitem.item).unwrap();
+                        gamelog.entries.push(format!("You use {} on {}, confusing them.", item_name.name, mob_name.name));
+                    }
+                }
+            }
+        }
+
+        for mob in add_confusion.iter() {
+            confused.insert(mob.0, Confusion{ turns: mob.1 }).expect("Unable to insert status");
         }
 
         // Consume consumables

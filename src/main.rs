@@ -36,6 +36,7 @@ pub enum RunState {
     MonsterTurn,
     ShowInventory,
     ShowDropItem,
+    ShowTargeting { range: i32, item: Entity},
 }
 
 pub struct State {
@@ -100,9 +101,13 @@ impl GameState for State {
                     (gui::ItemMenuResult::NoResponse, _) => {}
                     (gui::ItemMenuResult::Selected, entity) => {
                         let entity = entity.unwrap();
-                        let mut intent = self.ecs.write_storage::<WantsToUseItem>();
-                        intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem{ item: entity }).expect("Unable to insert intent");
-                        newrunstate = RunState::PlayerTurn;
+                        if let Some(ranged_item) = self.ecs.read_storage::<Ranged>().get(entity) {
+                            newrunstate = RunState::ShowTargeting{ range: ranged_item.range, item: entity };
+                        } else {
+                            let mut intent = self.ecs.write_storage::<WantsToUseItem>();
+                            intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem{ item: entity, target: None }).expect("Unable to insert intent");
+                            newrunstate = RunState::PlayerTurn;
+                        }
                     }
                 }
             }
@@ -114,6 +119,17 @@ impl GameState for State {
                         let entity = entity.unwrap();
                         let mut intent = self.ecs.write_storage::<WantsToDropItem>();
                         intent.insert(*self.ecs.fetch::<Entity>(), WantsToDropItem{ item: entity }).expect("Unable to insert intent");
+                        newrunstate = RunState::PlayerTurn;
+                    }
+                }
+            }
+            RunState::ShowTargeting{range, item} => {
+                match gui::ranged_target(self, ctx, range) {
+                    (gui::ItemMenuResult::Cancel, _) => newrunstate = RunState::AwaitingInput,
+                    (gui::ItemMenuResult::NoResponse, _) => {}
+                    (gui::ItemMenuResult::Selected, entity) => {
+                        let mut intent = self.ecs.write_storage::<WantsToUseItem>();
+                        intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem{ item: item, target: entity }).expect("Unable to insert intent");
                         newrunstate = RunState::PlayerTurn;
                     }
                 }
@@ -181,6 +197,8 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Consumable>();
     gs.ecs.register::<Ranged>();
     gs.ecs.register::<InflictsDamage>();
+    gs.ecs.register::<AreaOfEffect>();
+    gs.ecs.register::<Confusion>();
 
     // Create Map
     let map = new_map_rooms_and_corridors();
