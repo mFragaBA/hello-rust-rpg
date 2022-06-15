@@ -20,9 +20,9 @@ pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
     // Mana Bar
     for (_player, stats) in (&player, &magic_stats).join() {
         let mana = format!("MANA: {} / {}", stats.mana, stats.max_mana);
-        ctx.print_color(39, 43, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), mana);
+        ctx.print_color(40, 43, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), mana);
 
-        ctx.draw_bar_horizontal(44, 43, 33, stats.mana, stats.max_mana, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK));
+        ctx.draw_bar_horizontal(45, 43, 33, stats.mana, stats.max_mana, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK));
     }
 
     // Log
