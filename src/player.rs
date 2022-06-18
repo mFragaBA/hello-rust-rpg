@@ -2,6 +2,7 @@ use rltk::{VirtualKeyCode, Rltk, console, Point};
 use specs::prelude::*;
 use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats, WantsToMelee, WantsToPickupItem, GameLog, Item};
 use std::cmp::{min, max};
+use crate::gui;
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
@@ -106,7 +107,7 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             // Open Delete Menu
             VirtualKeyCode::D => return RunState::ShowDropItem,
 
-            VirtualKeyCode::Escape => ctx.quit(),
+            VirtualKeyCode::Escape => return RunState::MainMenu { menu_selection: gui::MainMenuSelection::NewGame },
             _ => { return RunState::AwaitingInput }
         }
     }
