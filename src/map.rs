@@ -6,7 +6,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum TileType {
-    Wall, Floor, VisitedFloor
+    Wall, Floor, VisitedFloor, DownStairs,
 }
 
 pub const MAP_WIDTH : usize = 80;
@@ -22,6 +22,7 @@ pub struct Map {
     pub revealed_tiles : Vec<bool>,
     pub visible_tiles : Vec<bool>,
     pub blocked : Vec<bool>,
+    pub depth: i32,
 
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -127,7 +128,7 @@ impl rltk::BaseMap for Map {
     }
 }
 
-pub fn new_map_rooms_and_corridors() -> Map {
+pub fn new_map_rooms_and_corridors(new_depth: i32) -> Map {
     let mut map = Map {
         tiles : vec![TileType::Wall; MAP_COUNT],
         rooms : Vec::new(),
@@ -136,7 +137,8 @@ pub fn new_map_rooms_and_corridors() -> Map {
         revealed_tiles : vec![false; MAP_COUNT],
         visible_tiles : vec![false; MAP_COUNT],
         blocked : vec![false; MAP_COUNT],
-        tile_content: vec![Vec::new(); MAP_COUNT]
+        tile_content: vec![Vec::new(); MAP_COUNT],
+        depth: new_depth
     };
 
     const MAX_ROOMS : i32 = 32;
@@ -172,6 +174,10 @@ pub fn new_map_rooms_and_corridors() -> Map {
         }
     }
 
+    let stairs_position = map.rooms[map.rooms.len() - 1].center();
+    let stairs_idx = map.xy_idx(stairs_position.0, stairs_position.1);
+    map.tiles[stairs_idx] = TileType::DownStairs;
+
     map
 }
 
@@ -199,6 +205,10 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
                 TileType::Wall => {
                     fg = RGB::from_f32(0.0, 1.0, 0.0);
                     glyph = rltk::to_cp437('#');
+                }
+                TileType::DownStairs => {
+                    fg = RGB::from_f32(0., 1.0, 1.0);
+                    glyph = rltk::to_cp437('>');
                 }
             }
 

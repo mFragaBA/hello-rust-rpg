@@ -20,7 +20,7 @@ pub fn spawn_player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
         .with(Player {})
         .with(Viewshed{ visible_tiles: Vec::new(), range : 8, dirty: true })
         .with(Name{name: "Sir Player of Nottingham".to_string() })
-        .with(CombatStats{ max_hp: 30, hp: 30, defense: 2, power: 5 })
+        .with(CombatStats{ max_hp: 300, hp: 300, defense: 2, power: 5 }) // TODO: revert max_hp to normal
         .with(MagicStats{ max_mana: 10, mana: 10, power: 7})
         .marked::<SimpleMarker<SerializeMe>>()
         .build()

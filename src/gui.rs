@@ -10,19 +10,23 @@ pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
     let magic_stats = ecs.read_storage::<MagicStats>();
     let player = ecs.read_storage::<Player>();
 
+    let map = ecs.fetch::<Map>();
+    let depth = format!("Depth: {}", map.depth);
+    ctx.print_color(2, 43, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), &depth);
+
     // Health Bar
     for (_player, stats) in (&player, &combat_stats).join() {
         let health = format!("HP: {} / {}", stats.hp, stats.max_hp);
-        ctx.print_color(2, 43, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), health);
+        ctx.print_color(14, 43, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), health);
 
-        ctx.draw_bar_horizontal(5, 43, 33, stats.hp, stats.max_hp, RGB::named(rltk::RED), RGB::named(rltk::BLACK));
+        ctx.draw_bar_horizontal(28, 43, 22, stats.hp, stats.max_hp, RGB::named(rltk::RED), RGB::named(rltk::BLACK));
     }
     // Mana Bar
     for (_player, stats) in (&player, &magic_stats).join() {
         let mana = format!("MANA: {} / {}", stats.mana, stats.max_mana);
-        ctx.print_color(40, 43, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), mana);
+        ctx.print_color(51, 43, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), mana);
 
-        ctx.draw_bar_horizontal(45, 43, 33, stats.mana, stats.max_mana, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK));
+        ctx.draw_bar_horizontal(56, 43, 22, stats.mana, stats.max_mana, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK));
     }
 
     // Log
