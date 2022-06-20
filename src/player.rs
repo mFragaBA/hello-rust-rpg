@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode, Rltk, console, Point};
 use specs::prelude::*;
-use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats, WantsToMelee, WantsToPickupItem, GameLog, Item};
+use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats, WantsToMelee, WantsToPickupItem, GameLog, Item, Monster};
 use std::cmp::{min, max};
 use crate::gui;
 
@@ -80,6 +80,32 @@ pub fn try_next_level(ecs: &mut World) -> bool {
     true
 }
 
+fn skip_turn(ecs: &mut World) -> RunState {
+    let player_ent = ecs.fetch::<Entity>();
+    let viewshed_components = ecs.read_storage::<Viewshed>();
+    let monsters = ecs.read_storage::<Monster>();
+
+    let worldmap_resource = ecs.fetch::<Map>();
+
+    let mut can_heal = viewshed_components.get(*player_ent).unwrap()
+        .visible_tiles
+        .iter()
+        .all(|tile|{
+            let idx = worldmap_resource.xy_idx(tile.x, tile.y);
+            worldmap_resource.tile_content[idx]
+                .iter()
+                .all(|ent_id| monsters.get(*ent_id).is_none())
+        });
+
+    if can_heal {
+        let mut health_components = ecs.write_storage::<CombatStats>();
+        let player_hp = health_components.get_mut(*player_ent).unwrap();
+        player_hp.hp = i32::min(player_hp.hp + 1, player_hp.max_hp);
+    }
+
+    RunState::PlayerTurn
+}
+
 pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
     // Player movement
     match ctx.key {
@@ -130,6 +156,10 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                     return RunState::NextLevel;
                 }
             }
+
+            // Skip Turn
+            VirtualKeyCode::Numpad5 |
+            VirtualKeyCode::Space => return skip_turn(&mut gs.ecs),
 
             VirtualKeyCode::Escape => return RunState::MainMenu{ menu_selection: gui::MainMenuSelection::NewGame },
             _ => { return RunState::AwaitingInput }
