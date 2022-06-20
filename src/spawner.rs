@@ -1,7 +1,9 @@
 use rltk::{ RGB, RandomNumberGenerator };
 use specs::prelude::*;
-use super::{CombatStats, MagicStats, Player, Renderable, Name, Position, Viewshed, Monster, BlocksTile, Rect, MAP_WIDTH, MAP_HEIGHT, ProvidesHealing, ProvidesManaRestore, Item, Consumable, Ranged, InflictsDamage, AreaOfEffect, Confusion, SerializeMe};
+use super::{CombatStats, MagicStats, Player, Renderable, Name, Position, Viewshed, Monster, BlocksTile, Rect, MAP_WIDTH, MAP_HEIGHT, ProvidesHealing, ProvidesManaRestore, Item, Consumable, Ranged, InflictsDamage, AreaOfEffect, Confusion, SerializeMe, RandomTable};
 use specs::saveload::{MarkedBuilder, SimpleMarker};
+
+use std::collections::HashMap;
 
 const MAX_MONSTERS : i32 = 4;
 const MAX_ITEMS : i32 = 2;
@@ -26,17 +28,19 @@ pub fn spawn_player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
         .build()
 }
 
-/// Spawns a random monster at a given location
-pub fn spawn_random_monster(ecs: &mut World, x: i32, y: i32) {
-    let roll: i32;
-    {
-        let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        roll = rng.roll_dice(1, 2);
-    }
-    match roll {
-        1 => orc(ecs, x, y),
-        _ => goblin(ecs, x, y)
-    }
+fn room_table() -> RandomTable {
+    RandomTable::new()
+        .add("Goblin", 14)
+        .add("Orc", 2)
+        .add("Health Potion", 4)
+        .add("Greater Health Potion", 2)
+        .add("Legendary Health Potion", 1)
+        .add("Mana Potion", 3)
+        .add("Greater Mana Potion", 2)
+        .add("Legendary Mana Potion", 1)
+        .add("Fireball Scroll", 1)
+        .add("Confusion Scroll", 2)
+        .add("Magic Missile Scroll", 3)
 }
 
 fn orc(ecs: &mut World, x: i32, y: i32) { monster(ecs, x, y, rltk::to_cp437('o'), "Orc"); }
@@ -61,96 +65,54 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
         .build();
 }
 
+#[allow(clippy::map_entry)]
 pub fn spawn_room(ecs: &mut World, room: &Rect) {
-    let mut monster_spawn_points : Vec<usize> = Vec::new();
-    let mut item_spawn_points : Vec<usize> = Vec::new();
+    let spawn_table = room_table();
+
+    let mut spawn_points : HashMap<usize, String> = HashMap::new();
 
     // Score to keep the borrow checker happy
     {
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        let num_monsters = rng.roll_dice(1, MAX_MONSTERS + 2) - 3;
-        let num_items = rng.roll_dice(1, MAX_ITEMS + 2) - 3;
+        let num_spawns = rng.roll_dice(1, MAX_MONSTERS + 3) - 3;
 
-        for _i in 0..num_monsters {
+        for _i in 0..num_spawns {
             let mut added = false;
-            while !added {
+            let mut tries = 0;
+            while !added && tries < 20 {
                 let x = (room.x1 + rng.roll_dice(1, i32::abs(room.x2 - room.x1))) as usize;
                 let y = (room.y1 + rng.roll_dice(1, i32::abs(room.y2 - room.y1))) as usize;
                 let idx = (y * MAP_WIDTH) + x;
-                if !monster_spawn_points.contains(&idx) {
-                    monster_spawn_points.push(idx);
+                if !spawn_points.contains_key(&idx) {
+                    spawn_points.insert(idx, spawn_table.roll(&mut rng));
                     added = true;
-                }
-            }
-        }
-
-        for _i in 0..num_items {
-            let mut added = false;
-            while !added {
-                let x = (room.x1 + rng.roll_dice(1, i32::abs(room.x2 - room.x1))) as usize;
-                let y = (room.y1 + rng.roll_dice(1, i32::abs(room.y2 - room.y1))) as usize;
-                let idx = (y * MAP_WIDTH) + x;
-                if !item_spawn_points.contains(&idx) {
-                    item_spawn_points.push(idx);
-                    added = true;
+                } else {
+                    tries += 1;
                 }
             }
         }
     }
 
-    // Actually spawn spawn the monsters
-    for idx in monster_spawn_points.iter() {
-        let x = *idx % MAP_WIDTH;
-        let y = *idx / MAP_WIDTH;
-        spawn_random_monster(ecs, x as i32, y as i32);
-    }
 
-    // Actually spawn spawn the items
-    for idx in item_spawn_points.iter() {
-        let x = *idx % MAP_WIDTH;
-        let y = *idx / MAP_WIDTH;
-        spawn_random_item(ecs, x as i32, y as i32);
-    }
-}
+    // Actually spawn stuff
+    for spawn in spawn_points.iter() {
+        let x = (*spawn.0 % MAP_WIDTH) as i32;
+        let y = (*spawn.0 / MAP_WIDTH) as i32;
 
-pub fn spawn_random_item(ecs: &mut World, x: i32, y: i32) {
-    let roll: i32;
-    {
-        let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        roll = rng.roll_dice(1, 5);
-    }
-    match roll {
-        1 => spawn_random_health_potion(ecs, x, y),
-        2 => spawn_random_mana_potion(ecs, x, y),
-        3 => magic_missile_scroll(ecs, x, y),
-        4 => fireball_scroll(ecs, x, y),
-        _ => confusion_scroll(ecs, x, y)
-    }
-}
-
-pub fn spawn_random_mana_potion(ecs: &mut World, x: i32, y: i32) {
-    let roll: i32;
-    {
-        let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        roll = rng.roll_dice(1, 100);
-    }
-    match roll {
-        1..=70 => potion_of_mana(ecs, x, y),
-        71..=95 => greater_potion_of_mana(ecs, x, y),
-        _ => legendary_potion_of_mana(ecs, x, y)
-    }
-}
-
-pub fn spawn_random_health_potion(ecs: &mut World, x: i32, y: i32) {
-    let roll: i32;
-    {
-        let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        roll = rng.roll_dice(1, 100);
-    }
-    match roll {
-        1..=70 => potion_of_healing(ecs, x, y),
-        71..=95 => greater_potion_of_healing(ecs, x, y),
-        _ => legendary_potion_of_healing(ecs, x, y)
+        match spawn.1.as_ref() {
+            "Goblin" => goblin(ecs, x, y),
+            "Orc" => orc(ecs, x, y),
+            "Health Potion" => potion_of_healing(ecs, x, y),
+            "Grater Health Potion" => greater_potion_of_healing(ecs, x, y),
+            "Legendary Health Potion" => legendary_potion_of_healing(ecs, x, y),
+            "Mana Potion" => potion_of_mana(ecs, x, y),
+            "Grater Mana Potion" => greater_potion_of_mana(ecs, x, y),
+            "Legendary Mana Potion" => legendary_potion_of_mana(ecs, x, y),
+            "Fireball Scroll" => fireball_scroll(ecs, x, y),
+            "Confusion Scroll" => confusion_scroll(ecs, x, y),
+            "Magic Missile Scroll" => magic_missile_scroll(ecs, x, y),
+            _ => {}
+        }
     }
 }
 

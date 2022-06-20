@@ -16,6 +16,8 @@ mod gui;
 mod gamelog;
 use gamelog::GameLog;
 mod spawner;
+mod random_table;
+use random_table::*;
 
 mod visibility_system;
 use visibility_system::VisibilitySystem;
