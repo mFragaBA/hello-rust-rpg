@@ -6,7 +6,6 @@ use specs::saveload::{MarkedBuilder, SimpleMarker};
 use std::collections::HashMap;
 
 const MAX_MONSTERS : i32 = 4;
-const MAX_ITEMS : i32 = 2;
 
 /// Spawns the player and returns his/her entity object.
 pub fn spawn_player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
@@ -28,18 +27,18 @@ pub fn spawn_player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
         .build()
 }
 
-fn room_table() -> RandomTable {
+fn room_table(map_depth: i32) -> RandomTable {
     RandomTable::new()
         .add("Goblin", 14)
-        .add("Orc", 2)
+        .add("Orc", 1 + map_depth)
         .add("Health Potion", 4)
         .add("Greater Health Potion", 2)
         .add("Legendary Health Potion", 1)
         .add("Mana Potion", 3)
         .add("Greater Mana Potion", 2)
         .add("Legendary Mana Potion", 1)
-        .add("Fireball Scroll", 1)
-        .add("Confusion Scroll", 2)
+        .add("Fireball Scroll", 1 + map_depth)
+        .add("Confusion Scroll", 2 + map_depth)
         .add("Magic Missile Scroll", 3)
 }
 
@@ -66,15 +65,15 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
 }
 
 #[allow(clippy::map_entry)]
-pub fn spawn_room(ecs: &mut World, room: &Rect) {
-    let spawn_table = room_table();
+pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
+    let spawn_table = room_table(map_depth);
 
     let mut spawn_points : HashMap<usize, String> = HashMap::new();
 
     // Score to keep the borrow checker happy
     {
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        let num_spawns = rng.roll_dice(1, MAX_MONSTERS + 3) - 3;
+        let num_spawns = rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3;
 
         for _i in 0..num_spawns {
             let mut added = false;

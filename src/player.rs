@@ -87,7 +87,7 @@ fn skip_turn(ecs: &mut World) -> RunState {
 
     let worldmap_resource = ecs.fetch::<Map>();
 
-    let mut can_heal = viewshed_components.get(*player_ent).unwrap()
+    let can_heal = viewshed_components.get(*player_ent).unwrap()
         .visible_tiles
         .iter()
         .all(|tile|{

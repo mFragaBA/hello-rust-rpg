@@ -144,7 +144,7 @@ impl GameState for State {
                 }
             }
             RunState::ShowDropItem => {
-                match gui::show_inventory(self, ctx) {
+                match gui::drop_item_menu(self, ctx) {
                     (gui::ItemMenuResult::Cancel, _) => newrunstate = RunState::AwaitingInput,
                     (gui::ItemMenuResult::NoResponse, _) => {}
                     (gui::ItemMenuResult::Selected, entity) => {
@@ -235,17 +235,18 @@ impl State {
         }
 
         // Build a new map and place the player
+        let current_depth;
         let worldmap;
         {
             let mut worldmap_resource = self.ecs.write_resource::<Map>();
-            let current_depth = worldmap_resource.depth;
+            current_depth = worldmap_resource.depth;
             *worldmap_resource = new_map_rooms_and_corridors(current_depth + 1);
             worldmap = worldmap_resource.clone();
         }
 
         // Spawn rooms
         for room in worldmap.rooms.iter().skip(1) {
-            spawner::spawn_room(&mut self.ecs, room);
+            spawner::spawn_room(&mut self.ecs, room, current_depth + 1);
         }
 
         // Place the player and update resources
@@ -333,7 +334,7 @@ fn main() -> rltk::BError {
     
     // Monsters - One at the center of each room
     for room in map.rooms.iter().skip(1) {
-        spawner::spawn_room(&mut gs.ecs, room);
+        spawner::spawn_room(&mut gs.ecs, room, 1);
     }
 
     // Insert map
