@@ -107,7 +107,7 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             // Open Delete Menu
             VirtualKeyCode::D => return RunState::ShowDropItem,
 
-            VirtualKeyCode::Escape => return RunState::MainMenu { menu_selection: gui::MainMenuSelection::NewGame },
+            VirtualKeyCode::Escape => return RunState::MainMenu{ menu_selection: gui::MainMenuSelection::NewGame },
             _ => { return RunState::AwaitingInput }
         }
     }

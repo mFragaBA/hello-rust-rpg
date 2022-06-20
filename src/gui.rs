@@ -205,7 +205,7 @@ pub fn ranged_target(gs: &mut State, ctx: &mut Rltk, range: i32) -> (ItemMenuRes
     
     // Draw mouse cursor
     let mouse_pos = ctx.mouse_pos();
-    let mut valid_target = available_cells.iter().any(|&idx| idx.x == mouse_pos.0 && idx.y == mouse_pos.1);
+    let valid_target = available_cells.iter().any(|&idx| idx.x == mouse_pos.0 && idx.y == mouse_pos.1);
     if valid_target {
         ctx.set_bg(mouse_pos.0, mouse_pos.1, RGB::named(rltk::CYAN));
         if ctx.left_click {
@@ -228,6 +228,7 @@ pub fn ranged_target(gs: &mut State, ctx: &mut Rltk, range: i32) -> (ItemMenuRes
 #[derive(PartialEq, Copy, Clone)]
 pub enum MainMenuSelection {
     NewGame,
+    SaveGame,
     LoadGame,
     Quit,
 }
@@ -240,6 +241,7 @@ pub enum MainMenuResult {
 
 pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
     let runstate = gs.ecs.fetch::<RunState>();
+    let save_exists = super::saveload_system::does_save_exist();
 
     ctx.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Rust Roguelike Tutorial");
 
@@ -250,16 +252,22 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
             ctx.print_color_centered(23, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Begin New Game");
         }
 
-        if selection == MainMenuSelection::LoadGame {
-            ctx.print_color_centered(25, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), "Load Game");
+        if selection == MainMenuSelection::SaveGame {
+            ctx.print_color_centered(25, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), "Save Game");
         } else {
-            ctx.print_color_centered(25, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Load Game");
+            ctx.print_color_centered(25, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Save Game");
         }
 
-        if selection == MainMenuSelection::Quit {
-            ctx.print_color_centered(27, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), "Quit");
+        if selection == MainMenuSelection::LoadGame && save_exists {
+            ctx.print_color_centered(27, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), "Load Game");
         } else {
-            ctx.print_color_centered(27, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Quit");
+            ctx.print_color_centered(27, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Load Game");
+        }
+        
+        if selection == MainMenuSelection::Quit {
+            ctx.print_color_centered(29, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), "Quit");
+        } else {
+            ctx.print_color_centered(29, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Quit");
         }
 
         match ctx.key {
@@ -268,21 +276,33 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
                 return MainMenuResult::NoSelection { selected: MainMenuSelection::Quit };
             }
             Some(VirtualKeyCode::Up) => {
-                let newselection;
+                let mut newselection;
                 match selection {
                     MainMenuSelection::NewGame => newselection = MainMenuSelection::Quit,
-                    MainMenuSelection::LoadGame => newselection = MainMenuSelection::NewGame,
+                    MainMenuSelection::SaveGame => newselection = MainMenuSelection::NewGame,
+                    MainMenuSelection::LoadGame => newselection = MainMenuSelection::SaveGame,
                     MainMenuSelection::Quit => newselection = MainMenuSelection::LoadGame
                 }
+
+                if newselection == MainMenuSelection::LoadGame && !save_exists {
+                    newselection = MainMenuSelection::SaveGame;
+                }
+
                 return MainMenuResult::NoSelection { selected: newselection };
             }
             Some(VirtualKeyCode::Down) => {
-                let newselection;
+                let mut newselection;
                 match selection {
-                    MainMenuSelection::NewGame => newselection = MainMenuSelection::LoadGame,
+                    MainMenuSelection::NewGame => newselection = MainMenuSelection::SaveGame,
+                    MainMenuSelection::SaveGame => newselection = MainMenuSelection::LoadGame,
                     MainMenuSelection::LoadGame => newselection = MainMenuSelection::Quit,
                     MainMenuSelection::Quit => newselection = MainMenuSelection::NewGame
                 }
+
+                if newselection == MainMenuSelection::LoadGame && !save_exists {
+                    newselection = MainMenuSelection::Quit;
+                }
+
                 return MainMenuResult::NoSelection { selected: newselection };
             }
             Some(VirtualKeyCode::Return) => return MainMenuResult::Selected{ selected: selection },
