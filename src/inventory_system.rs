@@ -1,5 +1,5 @@
 use specs::prelude::*;
-use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, ProvidesHealing, ProvidesManaRestore, WantsToUseItem, Consumable, InflictsDamage, SufferDamage, Map, AreaOfEffect, Confusion};
+use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, ProvidesHealing, ProvidesManaRestore, WantsToUseItem, Consumable, InflictsDamage, SufferDamage, Map, AreaOfEffect, Confusion, Equippable, Equipped};
 pub struct ItemCollectionSystem {}
 
 impl<'a> System<'a> for ItemCollectionSystem {
@@ -32,7 +32,7 @@ impl<'a> System<'a> for ItemCollectionSystem {
 pub struct ItemUseSystem {}
 
 impl<'a> System<'a> for ItemUseSystem {
-#[allow(clippy::type_complexity)]
+    #[allow(clippy::type_complexity)]
     type SystemData = ( ReadExpect<'a, Entity>,
                         ReadExpect<'a, Map>,
                         WriteExpect<'a, GameLog>,
@@ -47,14 +47,37 @@ impl<'a> System<'a> for ItemUseSystem {
                         ReadStorage<'a, InflictsDamage>,
                         WriteStorage<'a, SufferDamage>,
                         ReadStorage<'a, AreaOfEffect>,
-                        WriteStorage<'a, Confusion>);
+                        WriteStorage<'a, Confusion>,
+                        ReadStorage<'a, Equippable>,    
+                        WriteStorage<'a, Equipped>,    
+                        WriteStorage<'a, InBackpack>,    
+                    );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (player_entity, map, mut gamelog, entities, mut useitem, names, consumables, healing, mana_restoring, mut combat_stats, mut magic_stats, inflict_damage, mut suffer_damage, aoe, mut confused) = data;
+        let (
+            player_entity, 
+            map, 
+            mut gamelog, 
+            entities, 
+            mut useitem, 
+            names, 
+            consumables, 
+            healing, 
+            mana_restoring, 
+            mut combat_stats, 
+            mut magic_stats, 
+            inflict_damage, 
+            mut suffer_damage, 
+            aoe, 
+            mut confused, 
+            equippable, 
+            mut equipped, 
+            mut backpack
+        ) = data;
 
         // Targeting
-        let mut targets : Vec<Entity> = Vec::new();
-        for (entity, useitem, stats) in (&entities, &useitem, &mut combat_stats).join() {
+        for (entity, useitem) in (&entities, &useitem).join() {
+            let mut targets : Vec<Entity> = Vec::new();
             match useitem.target {
                 None => { targets.push( *player_entity ); }
                 Some(target) => {
@@ -81,10 +104,38 @@ impl<'a> System<'a> for ItemUseSystem {
                     }
                 }
             }
-        }
 
-        // Use consumables
-        for (entity, useitem) in (&entities, &useitem).join() {
+            // If it is equippable then we want to equip it. And unequip whatever else was equipped
+            let can_equip = equippable.get(useitem.item);
+            if can_equip.is_some() { 
+                let target_slot = can_equip.unwrap().slot;
+                let target = targets[0];
+
+                // Remove any items the target has in the item's slot
+                let mut to_unequip: Vec<Entity> = Vec::new();
+                for (item_entity, already_equipped, name) in (&entities, &equipped, &names).join() {
+                    if already_equipped.owner == target && already_equipped.slot == target_slot {
+                        to_unequip.push(item_entity);
+                        if target == *player_entity {
+                            gamelog.entries.push(format!("You unequip {}.", name.name));
+                        }
+                    }
+                }
+
+                for item in to_unequip.iter() {
+                    equipped.remove(*item);
+                    backpack.insert(*item, InBackpack{ owner: target }).expect("Unable to insert backpack entry");
+                }
+
+                // Wield the item
+                equipped.insert(useitem.item, Equipped{ owner: target, slot: target_slot }).expect("Unable to insert equipped component");
+                backpack.remove(useitem.item);
+                if target == *player_entity {
+                    gamelog.entries.push(format!("You equip {}.", names.get(useitem.item).unwrap().name));
+                }
+            }
+        
+            // Use consumables
             // Maybe Healing?
             if let Some(healer) = healing.get(useitem.item) {
                 for target in targets.iter() {
@@ -98,9 +149,6 @@ impl<'a> System<'a> for ItemUseSystem {
                 }
             }
 
-        }
-
-        for (entity, useitem) in (&entities, &useitem).join() {
             // Maybe Mana Restoring?
             if let Some(mana_restorer) = mana_restoring.get(useitem.item) {
                 for target in targets.iter() {
@@ -113,9 +161,7 @@ impl<'a> System<'a> for ItemUseSystem {
                     }
                 }
             }
-        }
-
-        for (entity, useitem) in (&entities, &useitem).join() {
+           
             // Deals Damage?
             if let Some(damage) = inflict_damage.get(useitem.item) {
                 for mob in targets.iter() {
@@ -127,29 +173,27 @@ impl<'a> System<'a> for ItemUseSystem {
                     }
                 }
             }
-        }
 
-        let mut add_confusion = Vec::new(); 
-        for (entity, useitem) in (&entities, &useitem).join() {
-            // Applies Confusion?
-            if let Some(confusion) = confused.get(useitem.item) {
-                for mob in targets.iter() {
-                    add_confusion.push( (*mob, confusion.turns) );
-                    if entity == *player_entity {
-                        let mob_name = names.get(*mob).unwrap();
-                        let item_name = names.get(useitem.item).unwrap();
-                        gamelog.entries.push(format!("You use {} on {}, confusing them.", item_name.name, mob_name.name));
+            let mut add_confusion = Vec::new(); 
+            {
+                // Applies Confusion?
+                if let Some(confusion) = confused.get(useitem.item) {
+                    for mob in targets.iter() {
+                        add_confusion.push( (*mob, confusion.turns) );
+                        if entity == *player_entity {
+                            let mob_name = names.get(*mob).unwrap();
+                            let item_name = names.get(useitem.item).unwrap();
+                            gamelog.entries.push(format!("You use {} on {}, confusing them.", item_name.name, mob_name.name));
+                        }
                     }
                 }
             }
-        }
 
-        for mob in add_confusion.iter() {
-            confused.insert(mob.0, Confusion{ turns: mob.1 }).expect("Unable to insert status");
-        }
+            for mob in add_confusion.iter() {
+                confused.insert(mob.0, Confusion{ turns: mob.1 }).expect("Unable to insert status");
+            }
 
-        // Consume consumables
-        for useitem in (&useitem).join() {
+            // Consume consumables
             let consumable = consumables.get(useitem.item);
             if consumable.is_some() {
                 entities.delete(useitem.item).expect("Delete Failed");

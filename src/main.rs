@@ -210,6 +210,7 @@ impl State {
         let player = self.ecs.read_storage::<Player>();
         let backpack = self.ecs.read_storage::<InBackpack>();
         let player_entity = self.ecs.fetch::<Entity>();
+        let equipped = self.ecs.read_storage::<Equipped>();
 
        // let mut to_delete: Vec<Entity> = Vec::new();
        // for entity in entities.join() {
@@ -222,8 +223,14 @@ impl State {
 
        // to_delete
        entities.join().filter(|ent| 
-           player.get(*ent).is_none() &&
-           if let Some(bp) = backpack.get(*ent) { bp.owner != *player_entity } else { true }
+            player.get(*ent).is_none() &&
+            if let Some(bp) = backpack.get(*ent) { 
+                bp.owner != *player_entity 
+            } 
+            else if let Some(eq) = equipped.get(*ent) {
+                eq.owner != *player_entity
+            }
+            else { true }
         ).collect::<Vec<Entity>>()
     }
 
@@ -318,6 +325,9 @@ fn main() -> rltk::BError {
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();
     gs.ecs.register::<Equippable>();
+    gs.ecs.register::<Equipped>();
+    gs.ecs.register::<MeleePowerBonus>();
+    gs.ecs.register::<DefenseBonus>();
 
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
