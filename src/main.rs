@@ -45,6 +45,7 @@ pub enum RunState {
     MainMenu { menu_selection: gui::MainMenuSelection },
     NextLevel,
     ShowRemoveItem,
+    GameOver,
 }
 
 pub struct State {
@@ -208,6 +209,15 @@ impl GameState for State {
                     }
                 }
             }
+            RunState::GameOver => {
+                match gui::game_over(ctx) {
+                    gui::GameOverResult::NoSelection => {}
+                    gui::GameOverResult::QuitToMenu => {
+                        self.game_over_cleanup();
+                        newrunstate = RunState::MainMenu{ menu_selection: gui::MainMenuSelection::NewGame };
+                    }
+                }
+            }
         }
 
         {
@@ -296,6 +306,47 @@ impl State {
         let mut player_health_store = self.ecs.write_storage::<CombatStats>();
         if let Some(health) = player_health_store.get_mut(*player_ent) {
             health.hp = i32::max(health.hp, health.max_hp / 2);
+        }
+    }
+
+    fn game_over_cleanup(&mut self) {
+        // Delete everything
+        let to_delete : Vec<_> = self.ecs.entities().join().collect();
+        for del in to_delete.iter() {
+            self.ecs.delete_entity(*del).expect("Entity deletion failed");
+        }
+
+        // Build a new map and place the player
+        let worldmap;
+        {
+            let mut worldmap_resource = self.ecs.write_resource::<Map>();
+            *worldmap_resource = new_map_rooms_and_corridors(1);
+            worldmap = worldmap_resource.clone();
+        }
+
+        // Spawn room
+        for room in worldmap.rooms.iter().skip(1) {
+            spawner::spawn_room(&mut self.ecs, room, 1);
+        }
+
+        // Place the player and update resources
+        let (px, py) = worldmap.rooms[0].center();
+        let player_ent = spawner::spawn_player(&mut self.ecs, px, py);
+        let mut ppos = self.ecs.write_resource::<rltk::Point>();
+        *ppos = rltk::Point::new(px, py);
+        let mut position_components = self.ecs.write_storage::<Position>();
+        let mut player_entity_writer = self.ecs.write_resource::<Entity>();
+        *player_entity_writer = player_ent;
+        let player_pos_comp = position_components.get_mut(player_ent);
+        if let Some(player_pos_comp) = player_pos_comp {
+            player_pos_comp.x = px;
+            player_pos_comp.y = py;
+        }
+
+        // Mark the player's visibility as dirty
+        let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
+        if let Some(vs) = viewshed_components.get_mut(player_ent) {
+            vs.dirty = true;
         }
     }
 }
