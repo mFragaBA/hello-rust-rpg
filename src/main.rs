@@ -30,7 +30,7 @@ use melee_combat_system::MeleeCombatSystem;
 mod damage_system;
 use damage_system::DamageSystem;
 mod inventory_system;
-use inventory_system::{ItemCollectionSystem, ItemUseSystem, ItemDropSystem};
+use inventory_system::{ItemCollectionSystem, ItemUseSystem, ItemDropSystem, ItemRemoveSystem};
 pub mod saveload_system;
 
 #[derive(PartialEq, Copy, Clone)]
@@ -44,6 +44,7 @@ pub enum RunState {
     ShowTargeting { range: i32, item: Entity},
     MainMenu { menu_selection: gui::MainMenuSelection },
     NextLevel,
+    ShowRemoveItem,
 }
 
 pub struct State {
@@ -68,6 +69,9 @@ impl State {
         potions.run_now(&self.ecs);
         let mut drop_items = ItemDropSystem{};
         drop_items.run_now(&self.ecs);
+        let mut unequip_items = ItemRemoveSystem{};
+        unequip_items.run_now(&self.ecs);
+
         self.ecs.maintain();
     }
 }
@@ -191,6 +195,18 @@ impl GameState for State {
             RunState::NextLevel => {
                 self.goto_next_level();
                 newrunstate = RunState::PreRun;
+            }
+            RunState::ShowRemoveItem => {
+                match gui::remove_item_menu(self, ctx) {
+                    (gui::ItemMenuResult::Cancel, _) => newrunstate = RunState::AwaitingInput,
+                    (gui::ItemMenuResult::NoResponse, _) => {}
+                    (gui::ItemMenuResult::Selected, item_entity) => {
+                        let item_entity = item_entity.unwrap();
+                        let mut intent = self.ecs.write_storage::<WantsToRemoveItem>();
+                        intent.insert(*self.ecs.fetch::<Entity>(), WantsToRemoveItem{ item: item_entity }).expect("Unable to insert intent");
+                        newrunstate = RunState::PlayerTurn;
+                    }
+                }
             }
         }
 
@@ -328,6 +344,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Equipped>();
     gs.ecs.register::<MeleePowerBonus>();
     gs.ecs.register::<DefenseBonus>();
+    gs.ecs.register::<WantsToRemoveItem>();
 
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 

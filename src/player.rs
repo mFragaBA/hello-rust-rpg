@@ -161,6 +161,9 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Numpad5 |
             VirtualKeyCode::Space => return skip_turn(&mut gs.ecs),
 
+            // Drop Item
+            VirtualKeyCode::R => return RunState::ShowRemoveItem,
+
             VirtualKeyCode::Escape => return RunState::MainMenu{ menu_selection: gui::MainMenuSelection::NewGame },
             _ => { return RunState::AwaitingInput }
         }
