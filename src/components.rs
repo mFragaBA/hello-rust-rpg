@@ -170,3 +170,8 @@ pub struct DefenseBonus {
 pub struct WantsToRemoveItem {
     pub item: Entity,
 }
+
+#[derive(Component, Debug, ConvertSaveload, Clone)]
+pub struct ParticleLifetime {
+    pub lifetime_ms: f32,
+}

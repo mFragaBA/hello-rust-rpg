@@ -1,4 +1,6 @@
 use specs::prelude::*;
+use crate::ParticleBuilder;
+
 use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, ProvidesHealing, ProvidesManaRestore, WantsToUseItem, Consumable, InflictsDamage, SufferDamage, Map, AreaOfEffect, Confusion, Equippable, Equipped, WantsToRemoveItem};
 pub struct ItemCollectionSystem {}
 
@@ -51,6 +53,8 @@ impl<'a> System<'a> for ItemUseSystem {
                         ReadStorage<'a, Equippable>,    
                         WriteStorage<'a, Equipped>,    
                         WriteStorage<'a, InBackpack>,    
+                        WriteExpect<'a, ParticleBuilder>,
+                        ReadStorage<'a, Position>,
                     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -72,7 +76,9 @@ impl<'a> System<'a> for ItemUseSystem {
             mut confused, 
             equippable, 
             mut equipped, 
-            mut backpack
+            mut backpack,
+            mut particle_builder,
+            positions
         ) = data;
 
         // Targeting
@@ -99,6 +105,8 @@ impl<'a> System<'a> for ItemUseSystem {
                                 for mob in map.tile_content[idx].iter() {
                                     targets.push(*mob);
                                 }
+
+                                particle_builder.request(tile_idx.x, tile_idx.y, rltk::RGB::named(rltk::ORANGE), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('░'), 200.0);
                             }
                         }
                     }
@@ -145,6 +153,10 @@ impl<'a> System<'a> for ItemUseSystem {
                         if entity == *player_entity {
                             gamelog.entries.push(format!("You drink the {}, healing {} hp", names.get(useitem.item).unwrap().name, healer.heal_amount));
                         }
+
+                        if let Some(pos) = positions.get(*target) {
+                            particle_builder.request(pos.x, pos.y, rltk::RGB::named(rltk::GREEN), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('♥'), 200.0);
+                        }
                     }
                 }
             }
@@ -157,6 +169,10 @@ impl<'a> System<'a> for ItemUseSystem {
                         stats.mana = i32::min(stats.max_mana, stats.mana + mana_restorer.mana_amount);
                         if entity == *player_entity {
                             gamelog.entries.push(format!("You drink the {}, restoring {} mana", names.get(useitem.item).unwrap().name, mana_restorer.mana_amount));
+                        }
+                        
+                        if let Some(pos) = positions.get(*target) {
+                            particle_builder.request(pos.x, pos.y, rltk::RGB::named(rltk::BLUE), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('♥'), 200.0);
                         }
                     }
                 }
@@ -171,6 +187,10 @@ impl<'a> System<'a> for ItemUseSystem {
                         let item_name = names.get(useitem.item).unwrap();
                         gamelog.entries.push(format!("You use {} on {}, inflicting {} hp.", item_name.name, mob_name.name, damage.damage));
                     }
+                            
+                    if let Some(pos) = positions.get(*mob) {
+                        particle_builder.request(pos.x, pos.y, rltk::RGB::named(rltk::RED), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('‼'), 200.0);
+                    }
                 }
             }
 
@@ -184,6 +204,10 @@ impl<'a> System<'a> for ItemUseSystem {
                             let mob_name = names.get(*mob).unwrap();
                             let item_name = names.get(useitem.item).unwrap();
                             gamelog.entries.push(format!("You use {} on {}, confusing them.", item_name.name, mob_name.name));
+                        
+                            if let Some(pos) = positions.get(*mob) {
+                                particle_builder.request(pos.x, pos.y, rltk::RGB::named(rltk::MAGENTA), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('?'), 200.0);
+                            }
                         }
                     }
                 }

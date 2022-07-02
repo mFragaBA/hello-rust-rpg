@@ -1,4 +1,5 @@
 extern crate serde;
+use particle_system::ParticleSpawnSystem;
 use rltk::{Rltk, GameState, RGB};
 use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
@@ -32,6 +33,8 @@ use damage_system::DamageSystem;
 mod inventory_system;
 use inventory_system::{ItemCollectionSystem, ItemUseSystem, ItemDropSystem, ItemRemoveSystem};
 pub mod saveload_system;
+mod particle_system;
+pub use particle_system::ParticleBuilder;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState { 
@@ -72,6 +75,8 @@ impl State {
         drop_items.run_now(&self.ecs);
         let mut unequip_items = ItemRemoveSystem{};
         unequip_items.run_now(&self.ecs);
+        let mut particle_system = ParticleSpawnSystem{};
+        particle_system.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -86,6 +91,7 @@ impl GameState for State {
         }
         
         ctx.cls();
+        particle_system::tick_and_cull_dead_particles(&mut self.ecs, ctx);
 
         match newrunstate {
             RunState::MainMenu{..} => {}
@@ -396,6 +402,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<MeleePowerBonus>();
     gs.ecs.register::<DefenseBonus>();
     gs.ecs.register::<WantsToRemoveItem>();
+    gs.ecs.register::<ParticleLifetime>();
 
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
@@ -428,6 +435,9 @@ fn main() -> rltk::BError {
     
     // Add gamelog as a resource
     gs.ecs.insert(GameLog{ entries : vec!["Welcome to Rusty Roguelike".to_string()] });
+
+    // Add Particle System as a service/resource
+    gs.ecs.insert(particle_system::ParticleBuilder::new());
 
     rltk::main_loop(context, gs)
 }
