@@ -1,6 +1,8 @@
 use rltk::console;
 use specs::prelude::*;
 
+use crate::{HungerClock, HungerState};
+
 use super::{CombatStats, WantsToMelee, Name, SufferDamage, GameLog, MeleePowerBonus, DefenseBonus, Equipped, ParticleBuilder, Position};
 
 pub struct MeleeCombatSystem {}
@@ -18,6 +20,7 @@ impl<'a> System<'a> for MeleeCombatSystem {
                         ReadStorage<'a, Equipped>,
                         WriteExpect<'a, ParticleBuilder>,
                         ReadStorage<'a, Position>,
+                        ReadStorage<'a, HungerClock>,
                     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -33,18 +36,26 @@ impl<'a> System<'a> for MeleeCombatSystem {
             equipped,
             mut particle_builder,
             positions,
+            hunger_clocks,
         ) = data;
 
         for (entity, wants_melee, name, stats) in (&entities, &wants_melee, &names, &combat_stats).join() {
             if stats.hp > 0 {
                 let target_stats = combat_stats.get(wants_melee.target).unwrap();
                 if target_stats.hp > 0 {
-                    let offensive_bonus : i32 = 
+
+                    let mut offensive_bonus : i32 = 
                     (&entities, &melee_power_bonuses, &equipped)
                         .join()
                         .filter(|(_item_entity, _power_bonus, equipped_by)| equipped_by.owner == entity)
                         .map(|(_item_entity, power_bonus, _equipped_by)| power_bonus.power)
                         .sum();
+
+                    if let Some(hunger_clock) = hunger_clocks.get(entity) {
+                        if hunger_clock.state == HungerState::WellFed {
+                            offensive_bonus += 1;
+                        }
+                    }
 
                     let defensive_bonus : i32 = 
                     (&entities, &defense_bonuses, &equipped)

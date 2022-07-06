@@ -2,7 +2,7 @@ use rltk::{VirtualKeyCode, Rltk, console, Point};
 use specs::prelude::*;
 use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats, WantsToMelee, WantsToPickupItem, GameLog, Item, Monster};
 use std::cmp::{min, max};
-use crate::gui;
+use crate::{gui, HungerClock, HungerState};
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
@@ -87,7 +87,7 @@ fn skip_turn(ecs: &mut World) -> RunState {
 
     let worldmap_resource = ecs.fetch::<Map>();
 
-    let can_heal = viewshed_components.get(*player_ent).unwrap()
+    let no_visible_monsters = viewshed_components.get(*player_ent).unwrap()
         .visible_tiles
         .iter()
         .all(|tile|{
@@ -96,6 +96,15 @@ fn skip_turn(ecs: &mut World) -> RunState {
                 .iter()
                 .all(|ent_id| monsters.get(*ent_id).is_none())
         });
+    let hunger_clocks = ecs.read_storage::<HungerClock>();
+    let not_hungry = if let Some(hunger_clock) = hunger_clocks.get(*player_ent) {
+        hunger_clock.state != HungerState::Hungry &&
+        hunger_clock.state != HungerState::Starving
+    } else {
+        true
+    };
+
+    let can_heal = no_visible_monsters && not_hungry;
 
     if can_heal {
         let mut health_components = ecs.write_storage::<CombatStats>();

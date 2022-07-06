@@ -1,5 +1,5 @@
 use specs::prelude::*;
-use crate::ParticleBuilder;
+use crate::{ParticleBuilder, HungerState, HungerClock, ProvidesFood};
 
 use super::{WantsToPickupItem, WantsToDropItem, Name, InBackpack, Position, gamelog::GameLog, CombatStats, MagicStats, ProvidesHealing, ProvidesManaRestore, WantsToUseItem, Consumable, InflictsDamage, SufferDamage, Map, AreaOfEffect, Confusion, Equippable, Equipped, WantsToRemoveItem};
 pub struct ItemCollectionSystem {}
@@ -55,6 +55,8 @@ impl<'a> System<'a> for ItemUseSystem {
                         WriteStorage<'a, InBackpack>,    
                         WriteExpect<'a, ParticleBuilder>,
                         ReadStorage<'a, Position>,
+                        WriteStorage<'a, HungerClock>,
+                        ReadStorage<'a, ProvidesFood>,
                     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -78,7 +80,9 @@ impl<'a> System<'a> for ItemUseSystem {
             mut equipped, 
             mut backpack,
             mut particle_builder,
-            positions
+            positions,
+            mut hunger_clocks,
+            provides_food
         ) = data;
 
         // Targeting
@@ -173,6 +177,36 @@ impl<'a> System<'a> for ItemUseSystem {
                         
                         if let Some(pos) = positions.get(*target) {
                             particle_builder.request(pos.x, pos.y, rltk::RGB::named(rltk::BLUE), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('♥'), 200.0);
+                        }
+                    }
+                }
+            }
+
+            // if it's edible, eat it
+            if provides_food.get(useitem.item).is_some() {
+                let target = targets[0];
+                if let Some(hunger_clock) = hunger_clocks.get_mut(target) {
+                    gamelog.entries.push(format!("You eat the {}.", names.get(useitem.item).unwrap().name));
+
+                    // This is sort of filling a hunger bar
+                    hunger_clock.duration += 150;
+                    if hunger_clock.duration > 200 {
+                        match hunger_clock.state {
+                            HungerState::WellFed => {
+                                hunger_clock.duration = 30;
+                            }
+                            HungerState::Normal => {
+                                hunger_clock.duration = i32::min(hunger_clock.duration - 200, 30);
+                                hunger_clock.state = HungerState::WellFed;
+                            }
+                            HungerState::Hungry => {
+                                hunger_clock.duration = hunger_clock.duration - 200;
+                                hunger_clock.state = HungerState::Normal;
+                            }
+                            HungerState::Starving => {
+                                hunger_clock.duration = hunger_clock.duration - 200;
+                                hunger_clock.state = HungerState::Hungry;
+                            }
                         }
                     }
                 }
