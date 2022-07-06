@@ -1,6 +1,8 @@
 use rltk::{ RGB, RandomNumberGenerator };
 use specs::prelude::*;
 
+use crate::HungerClock;
+
 use super::{CombatStats, MagicStats, Player, Renderable, Name, Position, Viewshed, Monster, BlocksTile, Rect, MAP_WIDTH, MAP_HEIGHT, ProvidesHealing, ProvidesManaRestore, Item, Consumable, Ranged, InflictsDamage, AreaOfEffect, Confusion, SerializeMe, RandomTable, Equippable, EquipmentSlot, MeleePowerBonus, DefenseBonus};
 use specs::saveload::{MarkedBuilder, SimpleMarker};
 
@@ -24,6 +26,7 @@ pub fn spawn_player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
         .with(Name{name: "Sir Player of Nottingham".to_string() })
         .with(CombatStats{ max_hp: 30, hp: 30, defense: 2, power: 5 }) // TODO: revert max_hp to normal
         .with(MagicStats{ max_mana: 10, mana: 10, power: 7})
+        .with(HungerClock{ state: crate::HungerState::WellFed, duration: 20 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build()
 }

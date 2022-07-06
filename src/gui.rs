@@ -1,6 +1,6 @@
 use rltk::{ RGB, Rltk, Console, Point, VirtualKeyCode };
 use specs::prelude::*;
-use super::{CombatStats, MagicStats, Player, GameLog, Map, Name, Position, State, InBackpack, Viewshed, RunState, Equipped};
+use super::{CombatStats, MagicStats, Player, GameLog, Map, Name, Position, State, InBackpack, Viewshed, RunState, Equipped, HungerClock, HungerState};
 
 pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
     ctx.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
@@ -9,6 +9,7 @@ pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
     let combat_stats = ecs.read_storage::<CombatStats>();
     let magic_stats = ecs.read_storage::<MagicStats>();
     let player = ecs.read_storage::<Player>();
+    let hunger_status = ecs.read_storage::<HungerClock>();
 
     let map = ecs.fetch::<Map>();
     let depth = format!("Depth: {}", map.depth);
@@ -20,6 +21,7 @@ pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
         ctx.print_color(14, 43, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), health);
 
         ctx.draw_bar_horizontal(28, 43, 22, stats.hp, stats.max_hp, RGB::named(rltk::RED), RGB::named(rltk::BLACK));
+
     }
     // Mana Bar
     for (_player, stats) in (&player, &magic_stats).join() {
@@ -27,6 +29,16 @@ pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
         ctx.print_color(51, 43, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), mana);
 
         ctx.draw_bar_horizontal(56, 43, 22, stats.mana, stats.max_mana, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK));
+    }
+
+    // Hunger
+    for (_player, hunger) in (&player, &hunger_status).join() {
+        match hunger.state {
+            HungerState::WellFed => ctx.print_color(35, 49, RGB::named(rltk::GREEN), RGB::named(rltk::BLACK), "Well Fed"),
+            HungerState::Hungry => ctx.print_color(35, 49, RGB::named(rltk::ORANGE), RGB::named(rltk::BLACK), "Hungry"),
+            HungerState::Starving => ctx.print_color(35, 49, RGB::named(rltk::RED), RGB::named(rltk::BLACK), "Starving"),
+            HungerState::Normal => {}
+        }
     }
 
     // Log

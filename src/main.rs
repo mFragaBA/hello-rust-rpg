@@ -1,4 +1,5 @@
 extern crate serde;
+use hunger_system::HungerSystem;
 use particle_system::ParticleSpawnSystem;
 use rltk::{Rltk, GameState, RGB};
 use specs::prelude::*;
@@ -35,6 +36,7 @@ use inventory_system::{ItemCollectionSystem, ItemUseSystem, ItemDropSystem, Item
 pub mod saveload_system;
 mod particle_system;
 pub use particle_system::ParticleBuilder;
+mod hunger_system;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState { 
@@ -77,6 +79,8 @@ impl State {
         unequip_items.run_now(&self.ecs);
         let mut particle_system = ParticleSpawnSystem{};
         particle_system.run_now(&self.ecs);
+        let mut hunger_system = HungerSystem{};
+        hunger_system.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -403,6 +407,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<DefenseBonus>();
     gs.ecs.register::<WantsToRemoveItem>();
     gs.ecs.register::<ParticleLifetime>();
+    gs.ecs.register::<HungerClock>();
 
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 

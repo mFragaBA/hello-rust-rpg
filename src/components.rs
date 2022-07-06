@@ -5,7 +5,8 @@ use serde::{Serialize, Deserialize};
 use specs::saveload::{Marker, ConvertSaveload};
 use specs::error::NoError;
 
-#[derive(Component, ConvertSaveload, Clone)]
+
+#[derive(Component, ConvertSaveload, Clone, Debug, PartialEq)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
@@ -174,4 +175,13 @@ pub struct WantsToRemoveItem {
 #[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct ParticleLifetime {
     pub lifetime_ms: f32,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Debug)]
+pub enum HungerState { WellFed, Normal, Hungry, Starving }
+
+#[derive(Component, Debug, ConvertSaveload, Clone)]
+pub struct HungerClock {
+    pub state: HungerState,
+    pub duration: i32,
 }
