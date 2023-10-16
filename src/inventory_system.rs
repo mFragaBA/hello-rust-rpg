@@ -1,4 +1,4 @@
-use crate::{HungerClock, HungerState, MagicMapper, ParticleBuilder, ProvidesFood};
+use crate::{HungerClock, HungerState, MagicMapper, ParticleBuilder, ProvidesFood, RunState};
 use specs::prelude::*;
 
 use super::{
@@ -54,6 +54,7 @@ impl<'a> System<'a> for ItemUseSystem {
     type SystemData = (
         ReadExpect<'a, Entity>,
         WriteExpect<'a, Map>,
+        WriteExpect<'a, RunState>,
         WriteExpect<'a, GameLog>,
         Entities<'a>,
         WriteStorage<'a, WantsToUseItem>,
@@ -81,6 +82,7 @@ impl<'a> System<'a> for ItemUseSystem {
         let (
             player_entity,
             mut map,
+            mut runstate,
             mut gamelog,
             entities,
             mut useitem,
@@ -352,9 +354,7 @@ impl<'a> System<'a> for ItemUseSystem {
             // Maybe reveal map
             let is_mapper = magic_mapper.get(useitem.item);
             if is_mapper.is_some() {
-                for r in map.revealed_tiles.iter_mut() {
-                    *r = true;
-                }
+                *runstate = RunState::MagicMapReveal { row: 0 };
                 gamelog
                     .entries
                     .push("The map is revealed to you!".to_string());
