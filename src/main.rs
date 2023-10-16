@@ -1,7 +1,7 @@
 extern crate serde;
 use hunger_system::HungerSystem;
 use particle_system::ParticleSpawnSystem;
-use rltk::{GameState, Rltk, RGB};
+use rltk::{GameState, Point, Rltk, RGB};
 use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 
@@ -51,7 +51,8 @@ pub enum RunState {
         item: Entity,
     },
     MagicMapReveal {
-        row: i32,
+        remaining_power: i32,
+        offset: i32,
     },
     MainMenu {
         menu_selection: gui::MainMenuSelection,
@@ -143,8 +144,14 @@ impl GameState for State {
                 self.run_systems();
                 self.ecs.maintain();
                 match *self.ecs.fetch::<RunState>() {
-                    RunState::MagicMapReveal { .. } => {
-                        newrunstate = RunState::MagicMapReveal { row: 0 }
+                    RunState::MagicMapReveal {
+                        remaining_power,
+                        offset,
+                    } => {
+                        newrunstate = RunState::MagicMapReveal {
+                            remaining_power,
+                            offset,
+                        }
                     }
                     _ => newrunstate = RunState::MonsterTurn,
                 };
@@ -271,16 +278,72 @@ impl GameState for State {
                     };
                 }
             },
-            RunState::MagicMapReveal { row } => {
+            RunState::MagicMapReveal {
+                remaining_power,
+                offset,
+            } => {
+                let player_pos = self.ecs.fetch::<Point>();
                 let mut map = self.ecs.fetch_mut::<Map>();
-                for x in 0..MAP_WIDTH {
-                    let idx = map.xy_idx(x as i32, row);
-                    map.revealed_tiles[idx] = true;
+
+                // first row
+                let top_row = player_pos.y - offset;
+
+                if top_row >= 0 {
+                    for x in (player_pos.x - offset)..(player_pos.x + offset) {
+                        if x < 0 || x >= (MAP_WIDTH as i32 - 1) {
+                            continue;
+                        }
+                        let idx = map.xy_idx(x as i32, top_row);
+                        map.revealed_tiles[idx] = true;
+                    }
                 }
-                if row as usize == MAP_HEIGHT - 1 {
+
+                // bottom row
+                let bottom_row = player_pos.y + offset;
+
+                if bottom_row < (MAP_HEIGHT as i32 - 1) {
+                    for x in (player_pos.x - offset)..(player_pos.x + offset) {
+                        if x < 0 || x >= (MAP_WIDTH as i32 - 1) {
+                            continue;
+                        }
+                        let idx = map.xy_idx(x as i32, bottom_row);
+                        map.revealed_tiles[idx] = true;
+                    }
+                }
+
+                // left col
+                let left_col = player_pos.x - offset;
+
+                if left_col >= 0 {
+                    for y in (player_pos.y - offset)..(player_pos.y + offset) {
+                        if y < 0 || y >= (MAP_HEIGHT as i32 - 1) {
+                            continue;
+                        }
+                        let idx = map.xy_idx(left_col, y as i32);
+                        map.revealed_tiles[idx] = true;
+                    }
+                }
+
+                // right col
+                let right_col = player_pos.x + offset;
+
+                if right_col < (MAP_WIDTH as i32 - 1) {
+                    for y in (player_pos.y - offset)..(player_pos.y + offset) {
+                        if y < 0 || y >= (MAP_HEIGHT as i32 - 1) {
+                            continue;
+                        }
+                        let idx = map.xy_idx(right_col, y as i32);
+                        map.revealed_tiles[idx] = true;
+                    }
+                }
+
+                if remaining_power as usize == 0 {
                     newrunstate = RunState::MonsterTurn;
                 } else {
-                    newrunstate = RunState::MagicMapReveal { row: row + 1 }
+                    newrunstate = RunState::MagicMapReveal {
+                        remaining_power: remaining_power - 1,
+                        offset: offset + 1,
+                    }
                 }
             }
         }

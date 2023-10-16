@@ -353,11 +353,15 @@ impl<'a> System<'a> for ItemUseSystem {
 
             // Maybe reveal map
             let is_mapper = magic_mapper.get(useitem.item);
-            if is_mapper.is_some() {
-                *runstate = RunState::MagicMapReveal { row: 0 };
-                gamelog
-                    .entries
-                    .push("The map is revealed to you!".to_string());
+            match is_mapper {
+                None => {}
+                Some(MagicMapper { power }) => {
+                    *runstate = RunState::MagicMapReveal {
+                        remaining_power: *power,
+                        offset: 1,
+                    };
+                    gamelog.entries.push("Magic Mapper Activate!".to_string());
+                }
             }
         }
 

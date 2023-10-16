@@ -396,6 +396,17 @@ fn rations(ecs: &mut World, x: i32, y: i32) {
 }
 
 fn magic_mapping_scroll(ecs: &mut World, x: i32, y: i32) {
+    let scroll_kind = {
+        let mut rng = ecs.write_resource::<RandomNumberGenerator>();
+        rng.roll_dice(1, 3)
+    };
+
+    let (name, power) = match scroll_kind {
+        1 => ("Scroll of Magic Mapping", 7),
+        2 => ("Greater Scroll of Magic Mapping", 20),
+        _ => ("Legendary Scroll of Magic Mapping", 70),
+    };
+
     ecs.create_entity()
         .with(Position { x, y })
         .with(Renderable {
@@ -405,10 +416,10 @@ fn magic_mapping_scroll(ecs: &mut World, x: i32, y: i32) {
             render_order: 2,
         })
         .with(Name {
-            name: "Scroll of Magic Mapping".to_string(),
+            name: name.to_string(),
         })
         .with(Item {})
-        .with(MagicMapper {})
+        .with(MagicMapper { power })
         .with(Consumable {})
         .marked::<SimpleMarker<SerializeMe>>()
         .build();

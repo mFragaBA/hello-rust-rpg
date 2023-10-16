@@ -198,4 +198,7 @@ pub struct HungerClock {
 pub struct ProvidesFood {}
 
 #[derive(Component, Debug, Serialize, Deserialize, Clone)]
-pub struct MagicMapper {}
+pub struct MagicMapper {
+    // power determines the radius reached by the mapper
+    pub power: i32,
+}
