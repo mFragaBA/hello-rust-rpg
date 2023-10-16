@@ -1,8 +1,11 @@
-use rltk::{VirtualKeyCode, Rltk, console, Point};
-use specs::prelude::*;
-use super::{Map, Position, Player, TileType, State, Viewshed, RunState, CombatStats, WantsToMelee, WantsToPickupItem, GameLog, Item, Monster};
-use std::cmp::{min, max};
+use super::{
+    CombatStats, GameLog, Item, Map, Monster, Player, Position, RunState, State, TileType,
+    Viewshed, WantsToMelee, WantsToPickupItem,
+};
 use crate::{gui, HungerClock, HungerState};
+use rltk::{console, Point, Rltk, VirtualKeyCode};
+use specs::prelude::*;
+use std::cmp::{max, min};
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
@@ -15,19 +18,31 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let entities = ecs.entities();
     let mut wants_to_melee = ecs.write_storage::<WantsToMelee>();
 
-    for (entity, _player, pos, viewshed) in (&entities, &mut players, &mut positions, &mut viewsheds).join() {
-        let (dst_x, dst_y) = (min(79, max(0, pos.x + delta_x)), min(49, max(0, pos.y + delta_y)));
+    for (entity, _player, pos, viewshed) in
+        (&entities, &mut players, &mut positions, &mut viewsheds).join()
+    {
+        let (dst_x, dst_y) = (
+            min(79, max(0, pos.x + delta_x)),
+            min(49, max(0, pos.y + delta_y)),
+        );
         let destination_idx = map.xy_idx(dst_x, dst_y);
 
         for potential_target in map.tile_content[destination_idx].iter() {
             if let Some(_t) = combat_stats.get(*potential_target) {
                 console::log(&format!("From Hell's Hert, I stab thee!"));
-                wants_to_melee.insert(entity, WantsToMelee{ target: *potential_target }).expect("Add target failed");
+                wants_to_melee
+                    .insert(
+                        entity,
+                        WantsToMelee {
+                            target: *potential_target,
+                        },
+                    )
+                    .expect("Add target failed");
                 return; // don't move after attacking
             }
         }
 
-        if !map.blocked[destination_idx]  {
+        if !map.blocked[destination_idx] {
             pos.x = dst_x;
             pos.y = dst_y;
             ppos.x = pos.x;
@@ -58,10 +73,20 @@ fn get_item(ecs: &mut World) {
     }
 
     match target_item {
-        None => gamelog.entries.push("There is nothing here to pick up.".to_string()),
+        None => gamelog
+            .entries
+            .push("There is nothing here to pick up.".to_string()),
         Some(item) => {
             let mut pickup = ecs.write_storage::<WantsToPickupItem>();
-            pickup.insert(*player_entity, WantsToPickupItem{ collected_by: *player_entity, item}).expect("Unable to pick up item");
+            pickup
+                .insert(
+                    *player_entity,
+                    WantsToPickupItem {
+                        collected_by: *player_entity,
+                        item,
+                    },
+                )
+                .expect("Unable to pick up item");
         }
     }
 }
@@ -70,10 +95,12 @@ pub fn try_next_level(ecs: &mut World) -> bool {
     let player_pos = ecs.fetch::<Point>();
     let map = ecs.fetch::<Map>();
     let player_idx = map.xy_idx(player_pos.x, player_pos.y);
-    
+
     if map.tiles[player_idx] != TileType::DownStairs {
         let mut gamelog = ecs.fetch_mut::<GameLog>();
-        gamelog.entries.push("There is no way down from here.".to_string());
+        gamelog
+            .entries
+            .push("There is no way down from here.".to_string());
         return false;
     }
 
@@ -87,10 +114,12 @@ fn skip_turn(ecs: &mut World) -> RunState {
 
     let worldmap_resource = ecs.fetch::<Map>();
 
-    let no_visible_monsters = viewshed_components.get(*player_ent).unwrap()
+    let no_visible_monsters = viewshed_components
+        .get(*player_ent)
+        .unwrap()
         .visible_tiles
         .iter()
-        .all(|tile|{
+        .all(|tile| {
             let idx = worldmap_resource.xy_idx(tile.x, tile.y);
             worldmap_resource.tile_content[idx]
                 .iter()
@@ -98,8 +127,7 @@ fn skip_turn(ecs: &mut World) -> RunState {
         });
     let hunger_clocks = ecs.read_storage::<HungerClock>();
     let not_hungry = if let Some(hunger_clock) = hunger_clocks.get(*player_ent) {
-        hunger_clock.state != HungerState::Hungry &&
-        hunger_clock.state != HungerState::Starving
+        hunger_clock.state != HungerState::Hungry && hunger_clock.state != HungerState::Starving
     } else {
         true
     };
@@ -118,37 +146,32 @@ fn skip_turn(ecs: &mut World) -> RunState {
 pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
     // Player movement
     match ctx.key {
-        None => { return RunState::AwaitingInput } // Nothing Happened
+        None => return RunState::AwaitingInput, // Nothing Happened
         Some(key) => match key {
+            VirtualKeyCode::Left | VirtualKeyCode::Numpad4 | VirtualKeyCode::H => {
+                try_move_player(-1, 0, &mut gs.ecs)
+            }
 
-            VirtualKeyCode::Left    |
-            VirtualKeyCode::Numpad4 |
-            VirtualKeyCode::H => try_move_player(-1, 0, &mut gs.ecs),
-            
-            VirtualKeyCode::Right   |
-            VirtualKeyCode::Numpad6 |
-            VirtualKeyCode::L => try_move_player(1, 0, &mut gs.ecs),
-            
-            VirtualKeyCode::Up      |
-            VirtualKeyCode::Numpad8 |
-            VirtualKeyCode::K => try_move_player(0, -1, &mut gs.ecs),
-            
-            VirtualKeyCode::Down    |
-            VirtualKeyCode::Numpad2 |
-            VirtualKeyCode::J => try_move_player(0, 1, &mut gs.ecs),
+            VirtualKeyCode::Right | VirtualKeyCode::Numpad6 | VirtualKeyCode::L => {
+                try_move_player(1, 0, &mut gs.ecs)
+            }
+
+            VirtualKeyCode::Up | VirtualKeyCode::Numpad8 | VirtualKeyCode::K => {
+                try_move_player(0, -1, &mut gs.ecs)
+            }
+
+            VirtualKeyCode::Down | VirtualKeyCode::Numpad2 | VirtualKeyCode::J => {
+                try_move_player(0, 1, &mut gs.ecs)
+            }
 
             // Diagonals
-            VirtualKeyCode::Numpad9 |
-            VirtualKeyCode::Y => try_move_player(-1, -1, &mut gs.ecs),
+            VirtualKeyCode::Numpad9 | VirtualKeyCode::Y => try_move_player(-1, -1, &mut gs.ecs),
 
-            VirtualKeyCode::Numpad7 |
-            VirtualKeyCode::U => try_move_player(1, -1, &mut gs.ecs),
+            VirtualKeyCode::Numpad7 | VirtualKeyCode::U => try_move_player(1, -1, &mut gs.ecs),
 
-            VirtualKeyCode::Numpad3 |
-            VirtualKeyCode::N => try_move_player(-1, 1, &mut gs.ecs),
-            
-            VirtualKeyCode::Numpad1 |
-            VirtualKeyCode::M => try_move_player(1, 1, &mut gs.ecs),
+            VirtualKeyCode::Numpad3 | VirtualKeyCode::N => try_move_player(-1, 1, &mut gs.ecs),
+
+            VirtualKeyCode::Numpad1 | VirtualKeyCode::M => try_move_player(1, 1, &mut gs.ecs),
 
             // Grabbing
             VirtualKeyCode::G => get_item(&mut gs.ecs),
@@ -167,16 +190,18 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             }
 
             // Skip Turn
-            VirtualKeyCode::Numpad5 |
-            VirtualKeyCode::Space => return skip_turn(&mut gs.ecs),
+            VirtualKeyCode::Numpad5 | VirtualKeyCode::Space => return skip_turn(&mut gs.ecs),
 
             // Drop Item
             VirtualKeyCode::R => return RunState::ShowRemoveItem,
 
-            VirtualKeyCode::Escape => return RunState::MainMenu{ menu_selection: gui::MainMenuSelection::NewGame },
-            _ => { return RunState::AwaitingInput }
-        }
+            VirtualKeyCode::Escape => {
+                return RunState::MainMenu {
+                    menu_selection: gui::MainMenuSelection::NewGame,
+                }
+            }
+            _ => return RunState::AwaitingInput,
+        },
     }
     RunState::PlayerTurn
 }
-

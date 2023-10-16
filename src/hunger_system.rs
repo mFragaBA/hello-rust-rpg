@@ -1,34 +1,26 @@
+use super::{gamelog::GameLog, HungerClock, HungerState, RunState, SufferDamage};
 use specs::prelude::*;
-use super::{HungerClock, RunState, HungerState, SufferDamage, gamelog::GameLog};
 
 pub struct HungerSystem {}
 
 impl<'a> System<'a> for HungerSystem {
     #[allow(clippy::type_complexity)]
     type SystemData = (
-                        Entities<'a>,
-                        WriteStorage<'a, HungerClock>,
-                        ReadExpect<'a, Entity>,
-                        ReadExpect<'a, RunState>,
-                        WriteStorage<'a, SufferDamage>,
-                        WriteExpect<'a, GameLog>,
-                    );
+        Entities<'a>,
+        WriteStorage<'a, HungerClock>,
+        ReadExpect<'a, Entity>,
+        ReadExpect<'a, RunState>,
+        WriteStorage<'a, SufferDamage>,
+        WriteExpect<'a, GameLog>,
+    );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (
-            entities,
-            mut hunger_clock,
-            player,
-            runstate,
-            mut inflict_damage,
-            mut log
-        ) = data;
+        let (entities, mut hunger_clock, player, runstate, mut inflict_damage, mut log) = data;
 
         for (entity, mut clock) in (&entities, &mut hunger_clock).join() {
             let is_player = entity == *player;
             match (*runstate, is_player) {
-                (RunState::PlayerTurn, true) |
-                (RunState::MonsterTurn, false) => {
+                (RunState::PlayerTurn, true) | (RunState::MonsterTurn, false) => {
                     clock.duration -= 1;
                     if clock.duration < 1 {
                         match clock.state {
@@ -50,7 +42,9 @@ impl<'a> System<'a> for HungerSystem {
                                 clock.state = HungerState::Starving;
                                 clock.duration = 200;
                                 if is_player {
-                                    log.entries.push("You are starving! Eat something, quick!".to_string());
+                                    log.entries.push(
+                                        "You are starving! Eat something, quick!".to_string(),
+                                    );
                                 }
                             }
                             HungerState::Starving => {
@@ -67,4 +61,3 @@ impl<'a> System<'a> for HungerSystem {
         }
     }
 }
-

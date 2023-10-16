@@ -1,14 +1,16 @@
+use super::{CombatStats, GameLog, Map, Name, Player, Position, RunState, SufferDamage};
 use specs::prelude::*;
-use super::{CombatStats, SufferDamage, Player, GameLog, Name, RunState, Position, Map};
 
 pub struct DamageSystem {}
 
 impl<'a> System<'a> for DamageSystem {
-    type SystemData = ( WriteStorage<'a, CombatStats>,
-                        WriteStorage<'a, SufferDamage>,
-                        ReadStorage<'a, Position>,
-                        WriteExpect<'a, Map>,
-                        Entities<'a>);
+    type SystemData = (
+        WriteStorage<'a, CombatStats>,
+        WriteStorage<'a, SufferDamage>,
+        ReadStorage<'a, Position>,
+        WriteExpect<'a, Map>,
+        Entities<'a>,
+    );
 
     fn run(&mut self, data: Self::SystemData) {
         let (mut stats, mut damage, positions, mut map, entities) = data;
@@ -28,7 +30,7 @@ impl<'a> System<'a> for DamageSystem {
 
 /// deletes all the dead entities and returns true if any died, false otherwise
 pub fn delete_the_dead(ecs: &mut World) {
-    let mut dead : Vec<Entity> = Vec::new();
+    let mut dead: Vec<Entity> = Vec::new();
 
     // Using a scope to make the borrow checker happy
     {
@@ -48,13 +50,14 @@ pub fn delete_the_dead(ecs: &mut World) {
                     if let Some(victim_name) = victim_name {
                         log.entries.push(format!("{} is dead.", &victim_name.name));
                     }
-                    dead.push(entity); 
+                    dead.push(entity);
                 }
             }
         }
     }
 
     for victim in &dead {
-        ecs.delete_entity(*victim).expect("Unable to delete entity!");
+        ecs.delete_entity(*victim)
+            .expect("Unable to delete entity!");
     }
 }
