@@ -1,3 +1,5 @@
+use crate::rex_assets::RexAssets;
+
 use super::{
     CombatStats, Equipped, GameLog, HungerClock, HungerState, InBackpack, MagicStats, Map, Name,
     Player, Position, RunState, State, Viewshed,
@@ -469,6 +471,9 @@ pub enum MainMenuResult {
 pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
     let runstate = gs.ecs.fetch::<RunState>();
     let save_exists = super::saveload_system::does_save_exist();
+
+    let assets = gs.ecs.fetch::<RexAssets>();
+    ctx.render_xp_sprite(&assets.menu, 0, 0);
 
     ctx.print_color_centered(
         15,

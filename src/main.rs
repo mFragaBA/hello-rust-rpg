@@ -16,6 +16,7 @@ mod rect;
 pub use rect::*;
 mod gamelog;
 mod gui;
+mod rex_assets;
 use gamelog::GameLog;
 mod random_table;
 mod spawner;
@@ -573,6 +574,9 @@ fn main() -> rltk::BError {
 
     // Add Particle System as a service/resource
     gs.ecs.insert(particle_system::ParticleBuilder::new());
+
+    // Add Rex assets as a resource
+    gs.ecs.insert(rex_assets::RexAssets::new());
 
     rltk::main_loop(context, gs)
 }
