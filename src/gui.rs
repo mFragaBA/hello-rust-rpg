@@ -475,6 +475,16 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
     let assets = gs.ecs.fetch::<RexAssets>();
     ctx.render_xp_sprite(&assets.menu, 0, 0);
 
+    // Enclose everything in a box
+    ctx.draw_box_double(
+        24,
+        21,
+        31,
+        10,
+        RGB::named(rltk::WHEAT),
+        RGB::named(rltk::BLACK),
+    );
+
     ctx.print_color_centered(
         15,
         RGB::named(rltk::YELLOW),
@@ -486,63 +496,70 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
         menu_selection: selection,
     } = *runstate
     {
+        let mut y = 23;
+
         if selection == MainMenuSelection::NewGame {
             ctx.print_color_centered(
-                23,
+                y,
                 RGB::named(rltk::MAGENTA),
                 RGB::named(rltk::BLACK),
                 "Begin New Game",
             );
         } else {
             ctx.print_color_centered(
-                23,
+                y,
                 RGB::named(rltk::WHITE),
                 RGB::named(rltk::BLACK),
                 "Begin New Game",
             );
         }
+        y += 2;
 
         if selection == MainMenuSelection::SaveGame {
             ctx.print_color_centered(
-                25,
+                y,
                 RGB::named(rltk::MAGENTA),
                 RGB::named(rltk::BLACK),
                 "Save Game",
             );
         } else {
             ctx.print_color_centered(
-                25,
+                y,
                 RGB::named(rltk::WHITE),
                 RGB::named(rltk::BLACK),
                 "Save Game",
             );
         }
+        y += 2;
 
-        if selection == MainMenuSelection::LoadGame && save_exists {
-            ctx.print_color_centered(
-                27,
-                RGB::named(rltk::MAGENTA),
-                RGB::named(rltk::BLACK),
-                "Load Game",
-            );
-        } else {
-            ctx.print_color_centered(
-                27,
-                RGB::named(rltk::WHITE),
-                RGB::named(rltk::BLACK),
-                "Load Game",
-            );
+        if save_exists {
+            if selection == MainMenuSelection::LoadGame {
+                ctx.print_color_centered(
+                    y,
+                    RGB::named(rltk::MAGENTA),
+                    RGB::named(rltk::BLACK),
+                    "Load Game",
+                );
+            } else {
+                ctx.print_color_centered(
+                    y,
+                    RGB::named(rltk::WHITE),
+                    RGB::named(rltk::BLACK),
+                    "Load Game",
+                );
+            }
+            y += 2;
         }
 
         if selection == MainMenuSelection::Quit {
             ctx.print_color_centered(
-                29,
+                y,
                 RGB::named(rltk::MAGENTA),
                 RGB::named(rltk::BLACK),
                 "Quit",
             );
         } else {
-            ctx.print_color_centered(29, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Quit");
+            ctx.print_color_centered(y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Quit");
         }
 
         match ctx.key {
