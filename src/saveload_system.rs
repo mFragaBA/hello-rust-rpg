@@ -4,6 +4,7 @@ use specs::prelude::*;
 use specs::saveload::{
     DeserializeComponents, MarkedBuilder, SerializeComponents, SimpleMarker, SimpleMarkerAllocator,
 };
+use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::path::Path;
@@ -41,7 +42,7 @@ macro_rules! deserialize_individually {
 pub fn save_game(ecs: &mut World) {}
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn save_game(ecs: &mut World) {
+pub fn save_game(ecs: &mut World, save_name: &str) {
     // Create helper
     let mapcopy = ecs.get_mut::<super::map::Map>().unwrap().clone();
     let savehelper = ecs
@@ -57,7 +58,7 @@ pub fn save_game(ecs: &mut World) {
             ecs.read_storage::<SimpleMarker<SerializeMe>>(),
         );
 
-        let writer = File::create("./savegame.json").unwrap();
+        let writer = File::create(&format!("./save_files/{}.json", save_name)).unwrap();
         let mut serializer = serde_json::Serializer::new(writer);
         serialize_individually!(
             ecs,
@@ -104,10 +105,41 @@ pub fn save_game(ecs: &mut World) {
 }
 
 pub fn does_save_exist() -> bool {
-    Path::new("./savegame.json").exists()
+    let dir = Path::new("./save_files/");
+
+    if !dir.is_dir() {
+        std::fs::create_dir(dir).expect("Unable to delete file");
+    }
+
+    fs::read_dir(dir)
+        .expect("couldn't read save files directory")
+        .any(|dir_entry| {
+            let entry = dir_entry.unwrap();
+            let path = entry.path();
+
+            path.is_file() && path.extension() == Some(OsStr::new("json"))
+        })
 }
 
-pub fn load_game(ecs: &mut World) {
+pub fn list_save_files() -> Vec<String> {
+    let dir = Path::new("./save_files/");
+
+    if !dir.is_dir() {
+        std::fs::create_dir(dir).expect("Unable to delete file");
+    }
+
+    fs::read_dir(dir)
+        .expect("couldn't read save files directory")
+        .map(|dir_entry| {
+            let entry = dir_entry.unwrap();
+            let path = entry.path();
+
+            path.file_stem().unwrap().to_str().unwrap().to_string()
+        })
+        .collect::<Vec<_>>()
+}
+
+pub fn load_game(ecs: &mut World, save_name: &str) {
     {
         // Delete everything
         let mut to_delete = Vec::new();
@@ -119,7 +151,7 @@ pub fn load_game(ecs: &mut World) {
         }
     }
 
-    let data = fs::read_to_string("./savegame.json").unwrap();
+    let data = fs::read_to_string(&format!("./save_files/{}.json", save_name)).unwrap();
     let mut de = serde_json::Deserializer::from_str(&data);
 
     {
@@ -191,8 +223,9 @@ pub fn load_game(ecs: &mut World) {
         .expect("Unable to delete helper");
 }
 
-pub fn delete_save() {
-    if Path::new("./savegame.json").exists() {
-        std::fs::remove_file("./savegame.json").expect("Unable to delete file");
+pub fn delete_save(save_name: &str) {
+    if Path::new(&format!("./save_files/{}.json", save_name)).exists() {
+        std::fs::remove_file(&format!("./save_files/{}.json", save_name))
+            .expect("Unable to delete file");
     }
 }

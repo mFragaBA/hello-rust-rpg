@@ -58,6 +58,9 @@ pub enum RunState {
     MainMenu {
         menu_selection: gui::MainMenuSelection,
     },
+    LoadMenu {
+        menu_selection: gui::LoadMenuSelection,
+    },
     NextLevel,
     ShowRemoveItem,
     GameOver,
@@ -228,7 +231,7 @@ impl GameState for State {
                 gui::MainMenuResult::Selected {
                     selected: gui::MainMenuSelection::SaveGame,
                 } => {
-                    saveload_system::save_game(&mut self.ecs);
+                    saveload_system::save_game(&mut self.ecs, "some_saved_game");
                     newrunstate = RunState::MainMenu {
                         menu_selection: gui::MainMenuSelection::LoadGame,
                     };
@@ -241,14 +244,36 @@ impl GameState for State {
                 gui::MainMenuResult::Selected {
                     selected: gui::MainMenuSelection::LoadGame,
                 } => {
-                    saveload_system::load_game(&mut self.ecs);
-                    newrunstate = RunState::AwaitingInput;
-                    saveload_system::delete_save();
+                    newrunstate = RunState::LoadMenu {
+                        menu_selection: gui::LoadMenuSelection::Selecting(0),
+                    };
                 }
                 gui::MainMenuResult::Selected {
                     selected: gui::MainMenuSelection::Quit,
                 } => {
                     ::std::process::exit(0);
+                }
+            },
+            RunState::LoadMenu { .. } => match gui::load_menu(self, ctx) {
+                gui::LoadMenuResult::NoSelection { selected } => {
+                    newrunstate = RunState::LoadMenu {
+                        menu_selection: selected,
+                    };
+                }
+                gui::LoadMenuResult::Selected {
+                    selected: gui::LoadMenuSelection::Selecting(selected),
+                } => {
+                    let saved_files = saveload_system::list_save_files();
+                    saveload_system::load_game(&mut self.ecs, &saved_files[selected as usize]);
+                    newrunstate = RunState::AwaitingInput;
+                    saveload_system::delete_save(&saved_files[selected as usize]);
+                }
+                gui::LoadMenuResult::Selected {
+                    selected: gui::LoadMenuSelection::Quit,
+                } => {
+                    newrunstate = RunState::MainMenu {
+                        menu_selection: gui::MainMenuSelection::NewGame,
+                    };
                 }
             },
             RunState::NextLevel => {

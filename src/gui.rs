@@ -624,6 +624,105 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
     }
 }
 
+/*
+ *  LOAD MENU
+ */
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum LoadMenuSelection {
+    Quit,
+    Selecting(i32),
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum LoadMenuResult {
+    NoSelection { selected: LoadMenuSelection },
+    Selected { selected: LoadMenuSelection },
+}
+
+pub fn load_menu(gs: &mut State, ctx: &mut Rltk) -> LoadMenuResult {
+    let runstate = gs.ecs.fetch::<RunState>();
+    let saved_files = super::saveload_system::list_save_files();
+
+    let assets = gs.ecs.fetch::<RexAssets>();
+    ctx.render_xp_sprite(&assets.menu, 0, 0);
+
+    // Enclose everything in a box
+    ctx.draw_box_double(
+        24,
+        21,
+        31,
+        10,
+        RGB::named(rltk::WHEAT),
+        RGB::named(rltk::BLACK),
+    );
+
+    if let RunState::LoadMenu {
+        menu_selection: LoadMenuSelection::Selecting(selection),
+    } = *runstate
+    {
+        let mut y = 23;
+
+        for (i, file_name) in saved_files.iter().enumerate() {
+            if selection == i as i32 {
+                ctx.print_color_centered(
+                    y + i,
+                    RGB::named(rltk::MAGENTA),
+                    RGB::named(rltk::BLACK),
+                    &file_name,
+                );
+            } else {
+                ctx.print_color_centered(
+                    y + i,
+                    RGB::named(rltk::WHITE),
+                    RGB::named(rltk::BLACK),
+                    &file_name,
+                );
+            }
+        }
+
+        match ctx.key {
+            None => {
+                return LoadMenuResult::NoSelection {
+                    selected: LoadMenuSelection::Selecting(selection),
+                }
+            }
+            Some(VirtualKeyCode::Escape) => {
+                return LoadMenuResult::Selected {
+                    selected: LoadMenuSelection::Quit,
+                };
+            }
+            Some(VirtualKeyCode::Down) => {
+                return LoadMenuResult::NoSelection {
+                    selected: LoadMenuSelection::Selecting(
+                        (selection + 1) % saved_files.len() as i32,
+                    ),
+                };
+            }
+            Some(VirtualKeyCode::Up) => {
+                return LoadMenuResult::NoSelection {
+                    selected: LoadMenuSelection::Selecting(
+                        (selection - 1 + saved_files.len() as i32) % saved_files.len() as i32,
+                    ),
+                };
+            }
+            Some(VirtualKeyCode::Return) => {
+                return LoadMenuResult::Selected {
+                    selected: LoadMenuSelection::Selecting(selection),
+                }
+            }
+            _ => {
+                return LoadMenuResult::NoSelection {
+                    selected: LoadMenuSelection::Selecting(selection),
+                }
+            }
+        }
+    }
+    LoadMenuResult::NoSelection {
+        selected: LoadMenuSelection::Selecting(0),
+    }
+}
+
 pub fn remove_item_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Entity>) {
     let player_entity = gs.ecs.fetch::<Entity>();
     let names = gs.ecs.read_storage::<Name>();
