@@ -1,7 +1,7 @@
 use rltk::{RandomNumberGenerator, RGB};
 use specs::prelude::*;
 
-use crate::{EntryTrigger, Hidden, HungerClock, MagicMapper, ProvidesFood};
+use crate::{EntryTrigger, Hidden, HungerClock, MagicMapper, ProvidesFood, SingleActivation};
 
 use super::{
     AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, DefenseBonus, EquipmentSlot,
@@ -441,6 +441,8 @@ fn bear_trap(ecs: &mut World, x: i32, y: i32) {
         })
         .with(Hidden {})
         .with(EntryTrigger {})
+        .with(InflictsDamage { damage: 6 })
+        .with(SingleActivation {})
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
