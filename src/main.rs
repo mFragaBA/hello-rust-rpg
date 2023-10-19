@@ -1,5 +1,4 @@
 extern crate serde;
-use hunger_system::HungerSystem;
 use particle_system::ParticleSpawnSystem;
 use rltk::{GameState, Point, Rltk, RGB};
 use specs::prelude::*;
@@ -38,6 +37,9 @@ mod particle_system;
 pub mod saveload_system;
 pub use particle_system::ParticleBuilder;
 mod hunger_system;
+use hunger_system::HungerSystem;
+mod trigger_system;
+use trigger_system::TriggerSystem;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -94,6 +96,8 @@ impl State {
         particle_system.run_now(&self.ecs);
         let mut hunger_system = HungerSystem {};
         hunger_system.run_now(&self.ecs);
+        let mut trigger_system = TriggerSystem {};
+        trigger_system.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
