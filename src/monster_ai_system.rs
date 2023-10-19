@@ -1,3 +1,5 @@
+use crate::EntityMoved;
+
 use super::{
     Confusion, Map, Monster, Name, ParticleBuilder, Position, RunState, Viewshed, WantsToMelee,
 };
@@ -20,6 +22,7 @@ impl<'a> System<'a> for MonsterAI {
         WriteStorage<'a, WantsToMelee>,
         WriteStorage<'a, Confusion>,
         WriteExpect<'a, ParticleBuilder>,
+        WriteStorage<'a, EntityMoved>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -35,6 +38,7 @@ impl<'a> System<'a> for MonsterAI {
             mut wants_to_melee,
             mut confused,
             mut particle_builder,
+            mut entity_moved,
         ) = data;
 
         if *runstate != RunState::MonsterTurn {
@@ -90,6 +94,7 @@ impl<'a> System<'a> for MonsterAI {
                     if path.success && path.steps.len() > 1 {
                         pos.x = path.steps[1] as i32 % map.width;
                         pos.y = path.steps[1] as i32 / map.width;
+                        entity_moved.insert(entity, EntityMoved {});
                         viewshed.dirty = true;
                     }
                 }

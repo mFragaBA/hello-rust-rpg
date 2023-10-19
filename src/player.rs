@@ -2,7 +2,7 @@ use super::{
     CombatStats, GameLog, Item, Map, Monster, Player, Position, RunState, State, TileType,
     Viewshed, WantsToMelee, WantsToPickupItem,
 };
-use crate::{gui, HungerClock, HungerState};
+use crate::{gui, EntityMoved, HungerClock, HungerState};
 use rltk::{console, Point, Rltk, VirtualKeyCode};
 use specs::prelude::*;
 use std::cmp::{max, min};
@@ -17,6 +17,8 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
 
     let entities = ecs.entities();
     let mut wants_to_melee = ecs.write_storage::<WantsToMelee>();
+
+    let mut entity_moved = ecs.write_storage::<EntityMoved>();
 
     for (entity, _player, pos, viewshed) in
         (&entities, &mut players, &mut positions, &mut viewsheds).join()
@@ -47,6 +49,10 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
             pos.y = dst_y;
             ppos.x = pos.x;
             ppos.y = pos.y;
+
+            entity_moved
+                .insert(entity, EntityMoved {})
+                .expect("Unable to insert EntityMoved marker");
 
             if map.tiles[destination_idx] != TileType::DownStairs {
                 map.tiles[destination_idx] = TileType::VisitedFloor;

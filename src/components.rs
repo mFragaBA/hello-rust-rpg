@@ -202,3 +202,12 @@ pub struct MagicMapper {
     // power determines the radius reached by the mapper
     pub power: i32,
 }
+
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
+pub struct Hidden {}
+
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
+pub struct EntryTrigger {}
+
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
+pub struct EntityMoved {}
