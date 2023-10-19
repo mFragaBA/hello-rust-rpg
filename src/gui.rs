@@ -815,6 +815,16 @@ pub enum GameOverResult {
 }
 
 pub fn game_over(ctx: &mut Rltk) -> GameOverResult {
+    // Enclose everything in a box
+    ctx.draw_box_double(
+        10,
+        13,
+        61,
+        10,
+        RGB::named(rltk::WHEAT),
+        RGB::named(rltk::BLACK),
+    );
+
     ctx.print_color_centered(
         15,
         RGB::named(rltk::YELLOW),
