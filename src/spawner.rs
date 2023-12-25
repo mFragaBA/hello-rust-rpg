@@ -75,7 +75,8 @@ fn room_table(map_depth: i32) -> RandomTable {
         .add("Tower Shield", map_depth - 1)
         .add("Rations", 10)
         .add("Magic Mapping Scroll", 2)
-        .add("Bear Trap", 100) // TODO: switch this back to 2
+        .add("Bear Trap", 7)
+        .add("Spikes", 7)
 }
 
 fn orc(ecs: &mut World, x: i32, y: i32) {
@@ -166,6 +167,7 @@ pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
             "Rations" => rations(ecs, x, y),
             "Magic Mapping Scroll" => magic_mapping_scroll(ecs, x, y),
             "Bear Trap" => bear_trap(ecs, x, y),
+            "Spikes" => spikes(ecs, x, y),
             _ => {}
         }
     }
@@ -431,7 +433,7 @@ fn bear_trap(ecs: &mut World, x: i32, y: i32) {
     ecs.create_entity()
         .with(Position { x, y })
         .with(Renderable {
-            glyph: rltk::to_cp437('^'),
+            glyph: rltk::to_cp437('w'),
             fg: RGB::named(rltk::RED),
             bg: RGB::named(rltk::BLACK),
             render_order: 2,
@@ -443,6 +445,25 @@ fn bear_trap(ecs: &mut World, x: i32, y: i32) {
         .with(EntryTrigger {})
         .with(InflictsDamage { damage: 6 })
         .with(SingleActivation {})
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn spikes(ecs: &mut World, x: i32, y: i32) {
+    ecs.create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('^'),
+            fg: RGB::named(rltk::RED),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2,
+        })
+        .with(Name {
+            name: "Spikes".to_string(),
+        })
+        .with(Hidden {})
+        .with(EntryTrigger {})
+        .with(InflictsDamage { damage: 6 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
