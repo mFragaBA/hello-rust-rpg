@@ -1,4 +1,4 @@
-use crate::{Position, spawner};
+use crate::{Position, spawner, SHOW_MAPGEN_VISUALIZER};
 
 use super::MapBuilder;
 use super::{Map, Rect, TileType};
@@ -10,7 +10,8 @@ pub struct SimpleMapBuilder {
     map: Map,
     starting_position: Position,
     rooms: Vec<Rect>,
-    depth: i32
+    depth: i32,
+    history: Vec<Map>
 }
 
 impl MapBuilder for SimpleMapBuilder {
@@ -31,6 +32,21 @@ impl MapBuilder for SimpleMapBuilder {
     fn get_starting_position(&mut self) -> Position {
         self.starting_position.clone()
     }
+
+    fn get_snapshot_history(&self) -> Vec<Map> {
+        self.history.clone()
+    }
+
+    fn take_snapshot(&mut self) {
+        if SHOW_MAPGEN_VISUALIZER {
+            // stores a copy of the map while making all tiles visible
+            let mut snapshot = self.map.clone();
+            for v in snapshot.revealed_tiles.iter_mut() {
+                *v = true;
+            }
+            self.history.push(snapshot);
+        }
+    }
 }
 
 impl SimpleMapBuilder {
@@ -39,7 +55,8 @@ impl SimpleMapBuilder {
             map: Map::new(new_depth),
             starting_position: Position { x: 0, y: 0 },
             rooms: Vec::new(),
-            depth: new_depth
+            depth: new_depth,
+            history: Vec::new()
         }
     }
 
@@ -59,6 +76,7 @@ impl SimpleMapBuilder {
 
             if !self.rooms.iter().any(|room| new_room.intersect(room)) {
                 common::apply_room_to_map(&mut self.map, &new_room);
+                self.take_snapshot();
 
                 // join the room with another one
                 if !self.rooms.is_empty() {
@@ -74,7 +92,8 @@ impl SimpleMapBuilder {
                     }
                 }
 
-                self.rooms.push(new_room)
+                self.rooms.push(new_room);
+                self.take_snapshot();
             }
         }
 
