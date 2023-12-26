@@ -392,6 +392,36 @@ impl GameState for State {
 }
 
 impl State {
+    fn generate_world_map(&mut self, new_depth: i32) {
+        let mut builder = map_builders::random_builder(new_depth);
+        {
+            let mut worldmap_resource = self.ecs.write_resource::<Map>();
+            builder.build_map();
+            *worldmap_resource = builder.get_map();
+        }
+
+        // Spawn room
+        builder.spawn_entities(&mut self.ecs);
+
+        // Place the player and update resources
+        let player_pos = builder.get_starting_position();
+        let mut ppos = self.ecs.write_resource::<rltk::Point>();
+        *ppos = rltk::Point::new(player_pos.x, player_pos.y);
+        let mut position_components = self.ecs.write_storage::<Position>();
+        let player_entity = self.ecs.fetch::<Entity>();
+        let player_pos_comp = position_components.get_mut(*player_entity);
+        if let Some(player_pos_comp) = player_pos_comp {
+            player_pos_comp.x = player_pos.x;
+            player_pos_comp.y = player_pos.y;
+        }
+
+        // Mark the player's visibility as dirty
+        let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
+        if let Some(vs) = viewshed_components.get_mut(*player_entity) {
+            vs.dirty = true;
+        }
+    }
+
     fn entities_to_remove_on_level_change(&mut self) -> Vec<Entity> {
         let entities = self.ecs.entities();
         let player = self.ecs.read_storage::<Player>();
@@ -433,39 +463,13 @@ impl State {
                 .expect("Unable to delete entity");
         }
 
-        // Build a new map and place the player
         let current_depth;
-        let player_pos;
-        let mut builder;
         {
-            let mut worldmap_resource = self.ecs.write_resource::<Map>();
+            let worldmap_resource = self.ecs.write_resource::<Map>();
             current_depth = worldmap_resource.depth;
-            builder = map_builders::random_builder(current_depth + 1);
-            builder.build_map();
-            *worldmap_resource = builder.get_map();
-            player_pos = builder.get_starting_position();
         }
 
-        // Spawn rooms
-        builder.spawn_entities(&mut self.ecs);
-
-        // Place the player and update resources
-        let (px, py) = (player_pos.x, player_pos.y);
-        let mut ppos = self.ecs.write_resource::<rltk::Point>();
-        *ppos = rltk::Point::new(px, py);
-        let mut position_components = self.ecs.write_storage::<Position>();
-        let player_ent = self.ecs.fetch::<Entity>();
-        let player_pos_comp = position_components.get_mut(*player_ent);
-        if let Some(player_pos_comp) = player_pos_comp {
-            player_pos_comp.x = px;
-            player_pos_comp.y = py;
-        }
-
-        // Mark the player's visibility as dirty
-        let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
-        if let Some(vs) = viewshed_components.get_mut(*player_ent) {
-            vs.dirty = true;
-        }
+        self.generate_world_map(current_depth + 1);
 
         // Notify the player and give them some health
         let mut gamelog = self.ecs.fetch_mut::<gamelog::GameLog>();
@@ -473,7 +477,8 @@ impl State {
             .entries
             .push("You descend to the next level, and take a moment to heal.".to_string());
         let mut player_health_store = self.ecs.write_storage::<CombatStats>();
-        if let Some(health) = player_health_store.get_mut(*player_ent) {
+        let player_entity = self.ecs.fetch::<Entity>();
+        if let Some(health) = player_health_store.get_mut(*player_entity) {
             health.hp = i32::max(health.hp, health.max_hp / 2);
         }
     }
@@ -487,40 +492,14 @@ impl State {
                 .expect("Entity deletion failed");
         }
 
-        // Build a new map and place the player
-        let worldmap;
-        let player_pos;
-        let mut builder = map_builders::random_builder(1);
+        // Spawn a new player
         {
-            let mut worldmap_resource = self.ecs.write_resource::<Map>();
-            builder.build_map();
-            *worldmap_resource = builder.get_map();
-            player_pos = builder.get_starting_position();
-            worldmap = worldmap_resource.clone();
+            let player_entity = spawner::spawn_player(&mut self.ecs, 0, 0);
+            let mut player_entity_writer = self.ecs.write_resource::<Entity>();
+            *player_entity_writer = player_entity;
         }
 
-        // Spawn room
-        builder.spawn_entities(&mut self.ecs);
-
-        // Place the player and update resources
-        let (px, py) = (player_pos.x, player_pos.y);
-        let player_ent = spawner::spawn_player(&mut self.ecs, px, py);
-        let mut ppos = self.ecs.write_resource::<rltk::Point>();
-        *ppos = rltk::Point::new(px, py);
-        let mut position_components = self.ecs.write_storage::<Position>();
-        let mut player_entity_writer = self.ecs.write_resource::<Entity>();
-        *player_entity_writer = player_ent;
-        let player_pos_comp = position_components.get_mut(player_ent);
-        if let Some(player_pos_comp) = player_pos_comp {
-            player_pos_comp.x = px;
-            player_pos_comp.y = py;
-        }
-
-        // Mark the player's visibility as dirty
-        let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
-        if let Some(vs) = viewshed_components.get_mut(player_ent) {
-            vs.dirty = true;
-        }
+        self.generate_world_map(1);
     }
 }
 
@@ -578,28 +557,14 @@ fn main() -> rltk::BError {
 
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
-    // Create Map
-    let mut builder = map_builders::random_builder(1);
-    builder.build_map();
-
-    // ===== ENTITY CREATION =====
-
     // Add a Random Number Generator as a resource
     gs.ecs.insert(rltk::RandomNumberGenerator::new());
 
-    // Player
-    let player_position = builder.get_starting_position();
-    let player_entity = spawner::spawn_player(&mut gs.ecs, player_position.x, player_position.y);
+    // Insert placeholder values for map and player positions
+    gs.ecs.insert(Map::new(1));
+    gs.ecs.insert(Point::new(0,0));
 
-    // Monsters - One at the center of each room
-    builder.spawn_entities(&mut gs.ecs);
-
-    // Insert map
-    let map = builder.get_map();
-    gs.ecs.insert(map);
-
-    // Insert player position and entity. This is not encouraged for anything but player entities
-    gs.ecs.insert(rltk::Point::new(player_position.x, player_position.y));
+    let player_entity = spawner::spawn_player(&mut gs.ecs, 0, 0);
     gs.ecs.insert(player_entity);
 
     // Turn RunState into a resource
@@ -617,6 +582,8 @@ fn main() -> rltk::BError {
 
     // Add Rex assets as a resource
     gs.ecs.insert(rex_assets::RexAssets::new());
+
+    gs.generate_world_map(1);
 
     rltk::main_loop(context, gs)
 }

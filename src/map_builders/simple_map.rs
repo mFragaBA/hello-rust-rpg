@@ -9,6 +9,7 @@ use specs::World;
 pub struct SimpleMapBuilder {
     map: Map,
     starting_position: Position,
+    rooms: Vec<Rect>,
     depth: i32
 }
 
@@ -18,7 +19,7 @@ impl MapBuilder for SimpleMapBuilder {
     }
 
     fn spawn_entities(&mut self, ecs: &mut World) {
-        for room in self.map.rooms.iter().skip(1) {
+        for room in self.rooms.iter().skip(1) {
             spawner::spawn_room(ecs, room, self.depth);
         }
     }
@@ -37,6 +38,7 @@ impl SimpleMapBuilder {
         SimpleMapBuilder {
             map: Map::new(new_depth),
             starting_position: Position { x: 0, y: 0 },
+            rooms: Vec::new(),
             depth: new_depth
         }
     }
@@ -55,13 +57,13 @@ impl SimpleMapBuilder {
             let y = rng.roll_dice(1, self.map.height - h - 1) - 1;
             let new_room = Rect::new(x, y, w, h);
 
-            if !self.map.rooms.iter().any(|room| new_room.intersect(room)) {
+            if !self.rooms.iter().any(|room| new_room.intersect(room)) {
                 common::apply_room_to_map(&mut self.map, &new_room);
 
                 // join the room with another one
-                if !self.map.rooms.is_empty() {
+                if !self.rooms.is_empty() {
                     let (new_x, new_y) = new_room.center();
-                    let (prev_x, prev_y) = self.map.rooms[self.map.rooms.len() - 1].center();
+                    let (prev_x, prev_y) = self.rooms[self.rooms.len() - 1].center();
                     if rng.range(0, 2) == 1 {
                         
                         common::apply_horizontal_tunnel(&mut self.map, prev_x, new_x, prev_y);
@@ -72,15 +74,15 @@ impl SimpleMapBuilder {
                     }
                 }
 
-                self.map.rooms.push(new_room)
+                self.rooms.push(new_room)
             }
         }
 
-        let stairs_position = self.map.rooms[self.map.rooms.len() - 1].center();
+        let stairs_position = self.rooms[self.rooms.len() - 1].center();
         let stairs_idx = self.map.xy_idx(stairs_position.0, stairs_position.1);
         self.map.tiles[stairs_idx] = TileType::DownStairs;
 
-        let (player_x, player_y) = self.map.rooms[0].center();
+        let (player_x, player_y) = self.rooms[0].center();
         self.starting_position = Position { x: player_x, y: player_y };
     }
 }
