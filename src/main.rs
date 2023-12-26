@@ -42,7 +42,7 @@ use hunger_system::HungerSystem;
 mod trigger_system;
 use trigger_system::TriggerSystem;
 
-const SHOW_MAPGEN_VISUALIZER : bool = true;
+const SHOW_MAPGEN_VISUALIZER: bool = true;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -271,7 +271,7 @@ impl GameState for State {
                 gui::MainMenuResult::Selected {
                     selected: gui::MainMenuSelection::NewGame,
                 } => {
-                    newrunstate = RunState::MapGeneration{};
+                    newrunstate = RunState::MapGeneration {};
                     self.mapgen_next_state = Some(RunState::PreRun);
                     self.generate_world_map(1);
                 }
@@ -312,7 +312,7 @@ impl GameState for State {
             },
             RunState::NextLevel => {
                 self.goto_next_level();
-                newrunstate = RunState::MapGeneration{};
+                newrunstate = RunState::MapGeneration {};
                 self.mapgen_next_state = Some(RunState::PreRun);
             }
             RunState::ShowRemoveItem => match gui::remove_item_menu(self, ctx) {
@@ -423,7 +423,6 @@ impl State {
         self.mapgen_index = 0;
         self.mapgen_timer = 0.0;
         self.mapgen_history.clear();
-
 
         let mut builder = map_builders::random_builder(new_depth);
         builder.build_map();
@@ -546,9 +545,11 @@ fn main() -> rltk::BError {
     context.with_post_scanlines(true);
 
     // Initialize Game State
-    let mut gs = State { 
+    let mut gs = State {
         ecs: World::new(),
-        mapgen_next_state: Some(RunState::MainMenu{ menu_selection: gui::MainMenuSelection::NewGame }),
+        mapgen_next_state: Some(RunState::MainMenu {
+            menu_selection: gui::MainMenuSelection::NewGame,
+        }),
         mapgen_index: 0,
         mapgen_history: Vec::new(),
         mapgen_timer: 0.0,
@@ -601,7 +602,7 @@ fn main() -> rltk::BError {
 
     // Insert placeholder values for map and player positions
     gs.ecs.insert(Map::new(1));
-    gs.ecs.insert(Point::new(0,0));
+    gs.ecs.insert(Point::new(0, 0));
 
     let player_entity = spawner::spawn_player(&mut gs.ecs, 0, 0);
     gs.ecs.insert(player_entity);

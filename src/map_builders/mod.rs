@@ -4,6 +4,7 @@ use super::{Map, Rect, TileType};
 
 mod simple_map;
 use simple_map::SimpleMapBuilder;
+mod bsp_dungeon;
 use specs::World;
 mod common;
 
