@@ -623,7 +623,5 @@ fn main() -> rltk::BError {
     // Add Rex assets as a resource
     gs.ecs.insert(rex_assets::RexAssets::new());
 
-    gs.generate_world_map(1);
-
     rltk::main_loop(context, gs)
 }
