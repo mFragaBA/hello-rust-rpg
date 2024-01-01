@@ -1,7 +1,7 @@
 use rltk::{RandomNumberGenerator, RGB};
 use specs::prelude::*;
 
-use crate::{EntryTrigger, Hidden, HungerClock, MagicMapper, ProvidesFood, SingleActivation};
+use crate::{EntryTrigger, Hidden, HungerClock, MagicMapper, ProvidesFood, SingleActivation, TileType, Map};
 
 use super::{
     AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, DefenseBonus, EquipmentSlot,
@@ -115,61 +115,75 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
         .build();
 }
 
-#[allow(clippy::map_entry)]
 pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
-    let spawn_table = room_table(map_depth);
-
-    let mut spawn_points: HashMap<usize, String> = HashMap::new();
-
-    // Score to keep the borrow checker happy
-    {
-        let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        let num_spawns = rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3;
-
-        for _i in 0..num_spawns {
-            let mut added = false;
-            let mut tries = 0;
-            while !added && tries < 20 {
-                let x = (room.x1 + rng.roll_dice(1, i32::abs(room.x2 - room.x1))) as usize;
-                let y = (room.y1 + rng.roll_dice(1, i32::abs(room.y2 - room.y1))) as usize;
-                let idx = (y * MAP_WIDTH) + x;
-                if !spawn_points.contains_key(&idx) {
-                    spawn_points.insert(idx, spawn_table.roll(&mut rng));
-                    added = true;
-                } else {
-                    tries += 1;
+    let mut possible_targets : Vec<usize> = Vec::new();
+    { // Borrow scope
+        let map = ecs.fetch::<Map>();
+        for y in room.y1 .. room.y2 {
+            for x in room.x1 .. room.x2 {
+                let idx = map.xy_idx(x, y);
+                if map.tiles[idx] == TileType::Floor {
+                    possible_targets.push(idx);
                 }
             }
         }
     }
 
+    spawn_region(ecs, &possible_targets, map_depth);
+}
+
+#[allow(clippy::map_entry)]
+pub fn spawn_region(ecs: &mut World, area: &[usize], map_depth: i32) {
+    let spawn_table = room_table(map_depth);
+
+    let mut spawn_points: HashMap<usize, String> = HashMap::new();
+    let mut areas : Vec<usize> = Vec::from(area);
+
+    // Score to keep the borrow checker happy
+    {
+        let mut rng = ecs.write_resource::<RandomNumberGenerator>();
+        let num_spawns = i32::min(areas.len() as i32, rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3);
+        if num_spawns == 0 { return; }
+
+        for _i in 0..num_spawns {
+            let array_index = if areas.len() == 1 { 0usize } else { (rng.roll_dice(1, areas.len() as i32)-1) as usize };
+            let map_idx = areas[array_index];
+            spawn_points.insert(map_idx, spawn_table.roll(&mut rng));
+            areas.remove(array_index);
+        }
+    }
+
     // Actually spawn stuff
     for spawn in spawn_points.iter() {
-        let x = (*spawn.0 % MAP_WIDTH) as i32;
-        let y = (*spawn.0 / MAP_WIDTH) as i32;
+        spawn_entity(ecs, &spawn);
+    }
+}
 
-        match spawn.1.as_ref() {
-            "Goblin" => goblin(ecs, x, y),
-            "Orc" => orc(ecs, x, y),
-            "Health Potion" => potion_of_healing(ecs, x, y),
-            "Grater Health Potion" => greater_potion_of_healing(ecs, x, y),
-            "Legendary Health Potion" => legendary_potion_of_healing(ecs, x, y),
-            "Mana Potion" => potion_of_mana(ecs, x, y),
-            "Grater Mana Potion" => greater_potion_of_mana(ecs, x, y),
-            "Legendary Mana Potion" => legendary_potion_of_mana(ecs, x, y),
-            "Fireball Scroll" => fireball_scroll(ecs, x, y),
-            "Confusion Scroll" => confusion_scroll(ecs, x, y),
-            "Magic Missile Scroll" => magic_missile_scroll(ecs, x, y),
-            "Dagger" => dagger(ecs, x, y),
-            "Shield" => shield(ecs, x, y),
-            "Longsword" => longsword(ecs, x, y),
-            "Tower Shield" => tower_shield(ecs, x, y),
-            "Rations" => rations(ecs, x, y),
-            "Magic Mapping Scroll" => magic_mapping_scroll(ecs, x, y),
-            "Bear Trap" => bear_trap(ecs, x, y),
-            "Spikes" => spikes(ecs, x, y),
-            _ => {}
-        }
+fn spawn_entity(ecs: &mut World, spawn: &(&usize, &String)) {
+    let x = (*spawn.0 % MAP_WIDTH) as i32;
+    let y = (*spawn.0 / MAP_WIDTH) as i32;
+
+    match spawn.1.as_ref() {
+        "Goblin" => goblin(ecs, x, y),
+        "Orc" => orc(ecs, x, y),
+        "Health Potion" => potion_of_healing(ecs, x, y),
+        "Grater Health Potion" => greater_potion_of_healing(ecs, x, y),
+        "Legendary Health Potion" => legendary_potion_of_healing(ecs, x, y),
+        "Mana Potion" => potion_of_mana(ecs, x, y),
+        "Grater Mana Potion" => greater_potion_of_mana(ecs, x, y),
+        "Legendary Mana Potion" => legendary_potion_of_mana(ecs, x, y),
+        "Fireball Scroll" => fireball_scroll(ecs, x, y),
+        "Confusion Scroll" => confusion_scroll(ecs, x, y),
+        "Magic Missile Scroll" => magic_missile_scroll(ecs, x, y),
+        "Dagger" => dagger(ecs, x, y),
+        "Shield" => shield(ecs, x, y),
+        "Longsword" => longsword(ecs, x, y),
+        "Tower Shield" => tower_shield(ecs, x, y),
+        "Rations" => rations(ecs, x, y),
+        "Magic Mapping Scroll" => magic_mapping_scroll(ecs, x, y),
+        "Bear Trap" => bear_trap(ecs, x, y),
+        "Spikes" => spikes(ecs, x, y),
+        _ => {}
     }
 }
 
