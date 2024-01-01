@@ -4,7 +4,7 @@ use rltk::RandomNumberGenerator;
 
 use crate::{spawner, Map, Position, Rect, SHOW_MAPGEN_VISUALIZER, TileType};
 
-use super::MapBuilder;
+use super::{MapBuilder, common};
 
 const MIN_ROOM_SIZE: i32 = 8;
 
@@ -72,54 +72,15 @@ impl MapBuilder for CellularAutomataBuilder {
             start_idx = self.map.xy_idx(self.starting_position.x, self.starting_position.y);
         }
 
-        // This is so unreachable tiles are actually unreachable. Otherwise wall tiles wouldn't be
-        // marked as blocked
-        self.map.populate_blocked();
-
-        // Find all tiles reachable from the starting point
-        let map_starts : Vec<usize> = vec![start_idx];
-        let dijkstra_map = rltk::DijkstraMap::new(self.map.width, self.map.height, &map_starts, &self.map, 200.0);
-        let mut exit_tile = (0, 0.0f32);
-        for (i, tile) in self.map.tiles.iter_mut().enumerate() {
-            if *tile == TileType::Floor {
-                let distance_to_start = dijkstra_map.map[i];
-                if distance_to_start == std::f32::MAX {
-                    *tile = TileType::Wall;
-                } else {
-                    if distance_to_start > exit_tile.1 {
-                        exit_tile.0 = i;
-                        exit_tile.1 = distance_to_start;
-                    }
-                }
-            }
-        }
+        let exit_tile_idx = common::cull_unreachables_and_return_most_distant_tile(&mut self.map, start_idx);
         self.take_snapshot();
 
-        self.map.tiles[exit_tile.0] = TileType::DownStairs;
+        // Place the stairs
+        self.map.tiles[exit_tile_idx] = TileType::DownStairs;
         self.take_snapshot();
 
         // Now build a noise map for use later when spawning entities
-        let mut noise = rltk::FastNoise::seeded(rng.roll_dice(1, 65536) as u64);
-        noise.set_frequency(0.08);
-        noise.set_cellular_distance_function(rltk::CellularDistanceFunction::Manhattan);
-
-        for y in 1 .. self.map.height - 1 {
-            for x in 1 .. self.map.width - 1 {
-                let idx = self.map.xy_idx(x, y);
-                if self.map.tiles[idx] == TileType::Floor {
-                    // On the tutorial it uses 10240.0 but using it results in ~1k areas being
-                    // created instead of the 20-30 it claims
-                    let cell_value_f = noise.get_noise(x as f32, y as f32) * 15.0;
-                    let cell_value = cell_value_f as i32;
-
-                    if self.noise_areas.contains_key(&cell_value) {
-                        self.noise_areas.get_mut(&cell_value).unwrap().push(idx);
-                    } else {
-                        self.noise_areas.insert(cell_value, vec![idx]);
-                    }
-                }
-            }
-        }
+        self.noise_areas = common::generate_voronoi_spawn_regions(&self.map, &mut rng);
     }
 
     fn spawn_entities(&mut self, ecs: &mut specs::World) {
