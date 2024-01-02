@@ -2,18 +2,22 @@ use std::collections::HashMap;
 
 use rltk::RandomNumberGenerator;
 
-use crate::{spawner, Map, Position, Rect, SHOW_MAPGEN_VISUALIZER, TileType};
+use crate::{spawner, Map, Position, Rect, TileType, SHOW_MAPGEN_VISUALIZER};
 
-use super::{MapBuilder, common};
+use super::{common, MapBuilder};
 
 const MIN_ROOM_SIZE: i32 = 8;
-const DESIRED_FLOOR_TILES_PERCENTAGE: f32 = 0.5;
 
 #[derive(PartialEq, Copy, Clone)]
-pub enum DrunkSpawnMode { StartingPoint, Random }
+pub enum DrunkSpawnMode {
+    StartingPoint,
+    Random,
+}
 
 pub struct DrunkardSettings {
-    pub spawn_mode: DrunkSpawnMode
+    pub spawn_mode: DrunkSpawnMode,
+    pub drunken_lifetime: i32,
+    pub floor_percent: f32
 }
 
 pub struct DrunkardsWalkBuilder {
@@ -68,7 +72,40 @@ impl DrunkardsWalkBuilder {
             depth: new_depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
-            settings
+            settings,
+        }
+    }
+
+    pub fn open_area(new_depth: i32) -> DrunkardsWalkBuilder {
+        DrunkardsWalkBuilder {
+            map: Map::new(new_depth),
+            starting_position: Position { x: 0, y: 0 },
+            depth: new_depth,
+            history: Vec::new(),
+            noise_areas: HashMap::new(),
+            settings: DrunkardSettings { spawn_mode: DrunkSpawnMode::StartingPoint, drunken_lifetime: 400, floor_percent: 0.5 },
+        }
+    }
+
+    pub fn open_halls(new_depth: i32) -> DrunkardsWalkBuilder {
+        DrunkardsWalkBuilder {
+            map: Map::new(new_depth),
+            starting_position: Position { x: 0, y: 0 },
+            depth: new_depth,
+            history: Vec::new(),
+            noise_areas: HashMap::new(),
+            settings: DrunkardSettings { spawn_mode: DrunkSpawnMode::Random, drunken_lifetime: 400, floor_percent: 0.5 },
+        }
+    }
+
+    pub fn widening_passages(new_depth: i32) -> DrunkardsWalkBuilder {
+        DrunkardsWalkBuilder {
+            map: Map::new(new_depth),
+            starting_position: Position { x: 0, y: 0 },
+            depth: new_depth,
+            history: Vec::new(),
+            noise_areas: HashMap::new(),
+            settings: DrunkardSettings { spawn_mode: DrunkSpawnMode::Random, drunken_lifetime: 100, floor_percent: 0.4 },
         }
     }
 
@@ -89,12 +126,17 @@ impl DrunkardsWalkBuilder {
         let mut rng = RandomNumberGenerator::new();
 
         // Set a central starting point
-        self.starting_position = Position { x: self.map.width / 2, y: self.map.height / 2 };
-        let start_idx = self.map.xy_idx(self.starting_position.x, self.starting_position.y);
+        self.starting_position = Position {
+            x: self.map.width / 2,
+            y: self.map.height / 2,
+        };
+        let start_idx = self
+            .map
+            .xy_idx(self.starting_position.x, self.starting_position.y);
         self.map.tiles[start_idx] = TileType::Floor;
 
         let total_tiles = self.map.width * self.map.height;
-        let desired_floor_tiles = (total_tiles as f32 * DESIRED_FLOOR_TILES_PERCENTAGE) as usize;
+        let desired_floor_tiles = (total_tiles as f32 * self.settings.floor_percent) as usize;
         let mut floor_tile_count = 1; // The starting position one
         let mut digger_count = 0;
         let mut active_digger_count = 0;
@@ -103,7 +145,7 @@ impl DrunkardsWalkBuilder {
             let mut did_something = false;
             let mut drunk_x;
             let mut drunk_y;
-            let mut drunk_lifetime = 400;
+            let mut drunk_lifetime = self.settings.drunken_lifetime;
 
             match self.settings.spawn_mode {
                 DrunkSpawnMode::StartingPoint => {
@@ -129,7 +171,7 @@ impl DrunkardsWalkBuilder {
                     2 if drunk_x < self.map.width - 2 => drunk_x += 1,
                     3 if drunk_y > 2 => drunk_y -= 1,
                     4 if drunk_y < self.map.height - 2 => drunk_y += 1,
-                    _ => {},
+                    _ => {}
                 }
 
                 drunk_lifetime -= 1;
@@ -146,14 +188,20 @@ impl DrunkardsWalkBuilder {
                     *t = TileType::Floor;
                 }
             }
-            floor_tile_count = self.map.tiles.iter()
+            floor_tile_count = self
+                .map
+                .tiles
+                .iter()
                 .filter(|a| **a == TileType::Floor)
                 .count();
         }
-        rltk::console::log(format!("{} dwarves gave up their sobriety, of whom {} actually found a wall.", digger_count, active_digger_count));
+        rltk::console::log(format!(
+            "{} dwarves gave up their sobriety, of whom {} actually found a wall.",
+            digger_count, active_digger_count
+        ));
 
-
-        let exit_tile_idx = common::cull_unreachables_and_return_most_distant_tile(&mut self.map, start_idx);
+        let exit_tile_idx =
+            common::cull_unreachables_and_return_most_distant_tile(&mut self.map, start_idx);
         self.take_snapshot();
 
         // Place the stairs

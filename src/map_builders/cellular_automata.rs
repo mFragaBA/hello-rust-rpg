@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use rltk::RandomNumberGenerator;
 
-use crate::{spawner, Map, Position, Rect, SHOW_MAPGEN_VISUALIZER, TileType};
+use crate::{spawner, Map, Position, Rect, TileType, SHOW_MAPGEN_VISUALIZER};
 
-use super::{MapBuilder, common};
+use super::{common, MapBuilder};
 
 const MIN_ROOM_SIZE: i32 = 8;
 
@@ -32,12 +32,15 @@ impl MapBuilder for CellularAutomataBuilder {
     fn build_map(&mut self) {
         let mut rng = RandomNumberGenerator::new();
         // Initialize random map
-        for y in 1..self.map.height-1 {
-            for x in 1..self.map.width-1 {
+        for y in 1..self.map.height - 1 {
+            for x in 1..self.map.width - 1 {
                 let roll = rng.roll_dice(1, 100);
                 let idx = self.map.xy_idx(x, y);
-                if roll > 55 { self.map.tiles[idx] = TileType::Floor; }
-                else { self.map.tiles[idx] = TileType::Wall; }
+                if roll > 55 {
+                    self.map.tiles[idx] = TileType::Floor;
+                } else {
+                    self.map.tiles[idx] = TileType::Wall;
+                }
             }
         }
         self.take_snapshot();
@@ -46,15 +49,14 @@ impl MapBuilder for CellularAutomataBuilder {
         for _iteration in 0..15 {
             let mut newtiles = self.map.tiles.clone();
 
-            for y in 1..self.map.height-1 {
-                for x in 1..self.map.width-1 {
+            for y in 1..self.map.height - 1 {
+                for x in 1..self.map.width - 1 {
                     let idx = self.map.xy_idx(x, y);
                     let neighbors = self.count_neighbors(idx);
 
                     if neighbors > 4 || neighbors == 0 {
                         newtiles[idx] = TileType::Wall;
                     } else {
-
                         newtiles[idx] = TileType::Floor;
                     }
                 }
@@ -65,14 +67,22 @@ impl MapBuilder for CellularAutomataBuilder {
         }
 
         // Pick a starting position. Start at the middle and walk left until we find an open tile
-        self.starting_position = Position { x: self.map.width / 2, y: self.map.height / 2 };
-        let mut start_idx = self.map.xy_idx(self.starting_position.x, self.starting_position.y);
+        self.starting_position = Position {
+            x: self.map.width / 2,
+            y: self.map.height / 2,
+        };
+        let mut start_idx = self
+            .map
+            .xy_idx(self.starting_position.x, self.starting_position.y);
         while self.map.tiles[start_idx] != TileType::Floor {
             self.starting_position.x -= 1;
-            start_idx = self.map.xy_idx(self.starting_position.x, self.starting_position.y);
+            start_idx = self
+                .map
+                .xy_idx(self.starting_position.x, self.starting_position.y);
         }
 
-        let exit_tile_idx = common::cull_unreachables_and_return_most_distant_tile(&mut self.map, start_idx);
+        let exit_tile_idx =
+            common::cull_unreachables_and_return_most_distant_tile(&mut self.map, start_idx);
         self.take_snapshot();
 
         // Place the stairs
@@ -113,16 +123,32 @@ impl CellularAutomataBuilder {
     }
 
     fn count_neighbors(&self, idx: usize) -> i32 {
-        let mut neighbors = 0 ;
+        let mut neighbors = 0;
 
-        if self.map.tiles[idx - 1] == TileType::Wall { neighbors += 1; }
-        if self.map.tiles[idx] == TileType::Wall { neighbors += 1; }
-        if self.map.tiles[idx - self.map.width as usize] == TileType::Wall { neighbors += 1; }
-        if self.map.tiles[idx + self.map.width as usize] == TileType::Wall { neighbors += 1; }
-        if self.map.tiles[idx - (self.map.width - 1) as usize] == TileType::Wall { neighbors += 1; }
-        if self.map.tiles[idx - (self.map.width + 1) as usize] == TileType::Wall { neighbors += 1; }
-        if self.map.tiles[idx + (self.map.width - 1) as usize] == TileType::Wall { neighbors += 1; }
-        if self.map.tiles[idx + (self.map.width + 1) as usize] == TileType::Wall { neighbors += 1; }
+        if self.map.tiles[idx - 1] == TileType::Wall {
+            neighbors += 1;
+        }
+        if self.map.tiles[idx] == TileType::Wall {
+            neighbors += 1;
+        }
+        if self.map.tiles[idx - self.map.width as usize] == TileType::Wall {
+            neighbors += 1;
+        }
+        if self.map.tiles[idx + self.map.width as usize] == TileType::Wall {
+            neighbors += 1;
+        }
+        if self.map.tiles[idx - (self.map.width - 1) as usize] == TileType::Wall {
+            neighbors += 1;
+        }
+        if self.map.tiles[idx - (self.map.width + 1) as usize] == TileType::Wall {
+            neighbors += 1;
+        }
+        if self.map.tiles[idx + (self.map.width - 1) as usize] == TileType::Wall {
+            neighbors += 1;
+        }
+        if self.map.tiles[idx + (self.map.width + 1) as usize] == TileType::Wall {
+            neighbors += 1;
+        }
 
         return neighbors;
     }

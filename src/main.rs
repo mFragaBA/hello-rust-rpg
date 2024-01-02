@@ -160,7 +160,7 @@ impl GameState for State {
 
                 self.mapgen_timer += ctx.frame_time_ms;
                 // change index every 300ms
-                if self.mapgen_timer > 300.0 {
+                if self.mapgen_timer > 200.0 {
                     self.mapgen_timer = 0.0;
                     self.mapgen_index += 1;
                     if self.mapgen_index >= self.mapgen_history.len() {
@@ -271,6 +271,7 @@ impl GameState for State {
                 gui::MainMenuResult::Selected {
                     selected: gui::MainMenuSelection::NewGame,
                 } => {
+                    self.game_over_cleanup();
                     newrunstate = RunState::MapGeneration {};
                     self.mapgen_next_state = Some(RunState::PreRun);
                     self.generate_world_map(1);
@@ -522,6 +523,14 @@ impl State {
             self.ecs
                 .delete_entity(*del)
                 .expect("Entity deletion failed");
+        }
+
+        // Clear the log
+        {
+            let mut gamelog = self.ecs.fetch_mut::<gamelog::GameLog>();
+            gamelog
+                .entries
+                .clear();
         }
 
         // Spawn a new player

@@ -1,7 +1,9 @@
 use rltk::{RandomNumberGenerator, RGB};
 use specs::prelude::*;
 
-use crate::{EntryTrigger, Hidden, HungerClock, MagicMapper, ProvidesFood, SingleActivation, TileType, Map};
+use crate::{
+    EntryTrigger, Hidden, HungerClock, MagicMapper, Map, ProvidesFood, SingleActivation, TileType,
+};
 
 use super::{
     AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, DefenseBonus, EquipmentSlot,
@@ -116,11 +118,12 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
 }
 
 pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
-    let mut possible_targets : Vec<usize> = Vec::new();
-    { // Borrow scope
+    let mut possible_targets: Vec<usize> = Vec::new();
+    {
+        // Borrow scope
         let map = ecs.fetch::<Map>();
-        for y in room.y1 .. room.y2 {
-            for x in room.x1 .. room.x2 {
+        for y in room.y1..room.y2 {
+            for x in room.x1..room.x2 {
                 let idx = map.xy_idx(x, y);
                 if map.tiles[idx] == TileType::Floor {
                     possible_targets.push(idx);
@@ -137,16 +140,25 @@ pub fn spawn_region(ecs: &mut World, area: &[usize], map_depth: i32) {
     let spawn_table = room_table(map_depth);
 
     let mut spawn_points: HashMap<usize, String> = HashMap::new();
-    let mut areas : Vec<usize> = Vec::from(area);
+    let mut areas: Vec<usize> = Vec::from(area);
 
     // Score to keep the borrow checker happy
     {
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        let num_spawns = i32::min(areas.len() as i32, rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3);
-        if num_spawns == 0 { return; }
+        let num_spawns = i32::min(
+            areas.len() as i32,
+            rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3,
+        );
+        if num_spawns == 0 {
+            return;
+        }
 
         for _i in 0..num_spawns {
-            let array_index = if areas.len() == 1 { 0usize } else { (rng.roll_dice(1, areas.len() as i32)-1) as usize };
+            let array_index = if areas.len() == 1 {
+                0usize
+            } else {
+                (rng.roll_dice(1, areas.len() as i32) - 1) as usize
+            };
             let map_idx = areas[array_index];
             spawn_points.insert(map_idx, spawn_table.roll(&mut rng));
             areas.remove(array_index);

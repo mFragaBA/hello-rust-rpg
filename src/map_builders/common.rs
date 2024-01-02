@@ -1,5 +1,8 @@
 use super::{Map, Rect, TileType};
-use std::{cmp::{max, min}, collections::HashMap};
+use std::{
+    cmp::{max, min},
+    collections::HashMap,
+};
 
 pub fn apply_room_to_map(map: &mut Map, room: &Rect) {
     for y in (room.y1 + 1)..=room.y2 {
@@ -32,7 +35,7 @@ pub fn cull_unreachables_and_return_most_distant_tile(map: &mut Map, start_idx: 
     map.populate_blocked();
 
     // Find all tiles reachable from the starting point
-    let map_starts : Vec<usize> = vec![start_idx];
+    let map_starts: Vec<usize> = vec![start_idx];
     let dijkstra_map = rltk::DijkstraMap::new(map.width, map.height, &map_starts, map, 200.0);
     let mut exit_tile = (0, 0.0f32);
     for (i, tile) in map.tiles.iter_mut().enumerate() {
@@ -52,15 +55,18 @@ pub fn cull_unreachables_and_return_most_distant_tile(map: &mut Map, start_idx: 
     exit_tile.0
 }
 
-pub fn generate_voronoi_spawn_regions(map: &Map, rng: &mut rltk::RandomNumberGenerator) -> HashMap<i32, Vec<usize>> {
+pub fn generate_voronoi_spawn_regions(
+    map: &Map,
+    rng: &mut rltk::RandomNumberGenerator,
+) -> HashMap<i32, Vec<usize>> {
     let mut noise_areas: HashMap<i32, Vec<usize>> = HashMap::new();
     let mut noise = rltk::FastNoise::seeded(rng.roll_dice(1, 65536) as u64);
     noise.set_noise_type(rltk::NoiseType::Cellular);
     noise.set_frequency(0.08);
     noise.set_cellular_distance_function(rltk::CellularDistanceFunction::Manhattan);
 
-    for y in 1 .. map.height - 1 {
-        for x in 1 .. map.width - 1 {
+    for y in 1..map.height - 1 {
+        for x in 1..map.width - 1 {
             let idx = map.xy_idx(x, y);
             if map.tiles[idx] == TileType::Floor {
                 // On the tutorial it uses 10240.0 but using it results in ~1k areas being
