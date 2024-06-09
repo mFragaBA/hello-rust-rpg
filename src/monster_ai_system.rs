@@ -1,9 +1,9 @@
 use crate::EntityMoved;
 
 use super::{
-    Confusion, Map, Monster, Name, ParticleBuilder, Position, RunState, Viewshed, WantsToMelee,
+    Confusion, Map, Monster, ParticleBuilder, Position, RunState, Viewshed, WantsToMelee,
 };
-use rltk::{console, field_of_view, Point};
+use rltk::Point;
 use specs::prelude::*;
 
 pub struct MonsterAI {}
@@ -45,7 +45,7 @@ impl<'a> System<'a> for MonsterAI {
             return;
         }
 
-        for (entity, mut viewshed, _monster, mut pos) in
+        for (entity, viewshed, _monster, pos) in
             (&entities, &mut viewshed, &monster, &mut position).join()
         {
             let mut can_act = true;

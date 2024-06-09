@@ -1,5 +1,3 @@
-use std::mem::swap;
-
 use rltk::RandomNumberGenerator;
 
 use crate::{spawner, Map, Position, Rect, TileType, SHOW_MAPGEN_VISUALIZER};

@@ -17,9 +17,9 @@ impl<'a> System<'a> for HungerSystem {
     fn run(&mut self, data: Self::SystemData) {
         let (entities, mut hunger_clock, player, runstate, mut inflict_damage, mut log) = data;
 
-        for (entity, mut clock) in (&entities, &mut hunger_clock).join() {
+        for (entity, clock) in (&entities, &mut hunger_clock).join() {
             let is_player = entity == *player;
-            match (*runstate, is_player) {
+            match (&*runstate, is_player) {
                 (RunState::PlayerTurn, true) | (RunState::MonsterTurn, false) => {
                     clock.duration -= 1;
                     if clock.duration < 1 {

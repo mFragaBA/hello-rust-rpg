@@ -1,11 +1,6 @@
-use super::{Player, Rect, Viewshed, World};
-use rltk::{RandomNumberGenerator, Rltk, RGB};
+use rltk::{Rltk, RGB};
 use serde::{Deserialize, Serialize};
-use specs::WorldExt;
-use std::{
-    cmp::{max, min},
-    collections::HashSet,
-};
+use std::collections::HashSet;
 
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum TileType {

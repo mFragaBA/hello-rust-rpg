@@ -81,7 +81,7 @@ impl<'a> System<'a> for ItemUseSystem {
     fn run(&mut self, data: Self::SystemData) {
         let (
             player_entity,
-            mut map,
+            map,
             mut runstate,
             mut gamelog,
             entities,

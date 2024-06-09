@@ -4,7 +4,7 @@ use super::{
     CombatStats, Equipped, GameLog, HungerClock, HungerState, InBackpack, MagicStats, Map, Name,
     Player, Position, RunState, State, Viewshed,
 };
-use rltk::{Console, Point, Rltk, VirtualKeyCode, RGB};
+use rltk::{Point, Rltk, VirtualKeyCode, RGB};
 use specs::prelude::*;
 
 pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
@@ -662,7 +662,7 @@ pub fn load_menu(gs: &mut State, ctx: &mut Rltk) -> LoadMenuResult {
         menu_selection: LoadMenuSelection::Selecting(selection),
     } = *runstate
     {
-        let mut y = 23;
+        let y = 23;
 
         for (i, file_name) in saved_files.iter().enumerate() {
             if selection == i as i32 {

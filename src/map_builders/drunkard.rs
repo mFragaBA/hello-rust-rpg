@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use rltk::RandomNumberGenerator;
 
-use crate::{spawner, Map, Position, Rect, TileType, SHOW_MAPGEN_VISUALIZER};
+use crate::{spawner, Map, Position, TileType, SHOW_MAPGEN_VISUALIZER};
 
 use super::{common, MapBuilder};
-
-const MIN_ROOM_SIZE: i32 = 8;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum DrunkSpawnMode {
@@ -77,36 +75,27 @@ impl DrunkardsWalkBuilder {
     }
 
     pub fn open_area(new_depth: i32) -> DrunkardsWalkBuilder {
-        DrunkardsWalkBuilder {
-            map: Map::new(new_depth),
-            starting_position: Position { x: 0, y: 0 },
-            depth: new_depth,
-            history: Vec::new(),
-            noise_areas: HashMap::new(),
-            settings: DrunkardSettings { spawn_mode: DrunkSpawnMode::StartingPoint, drunken_lifetime: 400, floor_percent: 0.5 },
-        }
+        Self::new(new_depth, DrunkardSettings { 
+            spawn_mode: DrunkSpawnMode::StartingPoint, 
+            drunken_lifetime: 400, 
+            floor_percent: 0.5 
+        })
     }
 
     pub fn open_halls(new_depth: i32) -> DrunkardsWalkBuilder {
-        DrunkardsWalkBuilder {
-            map: Map::new(new_depth),
-            starting_position: Position { x: 0, y: 0 },
-            depth: new_depth,
-            history: Vec::new(),
-            noise_areas: HashMap::new(),
-            settings: DrunkardSettings { spawn_mode: DrunkSpawnMode::Random, drunken_lifetime: 400, floor_percent: 0.5 },
-        }
+        Self::new(new_depth, DrunkardSettings { 
+            spawn_mode: DrunkSpawnMode::Random, 
+            drunken_lifetime: 400, 
+            floor_percent: 0.5 
+        })
     }
 
     pub fn widening_passages(new_depth: i32) -> DrunkardsWalkBuilder {
-        DrunkardsWalkBuilder {
-            map: Map::new(new_depth),
-            starting_position: Position { x: 0, y: 0 },
-            depth: new_depth,
-            history: Vec::new(),
-            noise_areas: HashMap::new(),
-            settings: DrunkardSettings { spawn_mode: DrunkSpawnMode::Random, drunken_lifetime: 100, floor_percent: 0.4 },
-        }
+        Self::new(new_depth, DrunkardSettings { 
+            spawn_mode: DrunkSpawnMode::Random, 
+            drunken_lifetime: 100, 
+            floor_percent: 0.4 
+        })
     }
 
     /// The basic idea behind the algorithm is simple:

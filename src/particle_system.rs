@@ -59,7 +59,7 @@ pub fn tick_and_cull_dead_particles(ecs: &mut World, ctx: &Rltk) {
     {
         let entities = ecs.entities();
         let mut particles = ecs.write_storage::<ParticleLifetime>();
-        for (entity, mut particle) in (&entities, &mut particles).join() {
+        for (entity, particle) in (&entities, &mut particles).join() {
             particle.lifetime_ms -= ctx.frame_time_ms;
             if particle.lifetime_ms < 0.0 {
                 dead_particles.push(entity);

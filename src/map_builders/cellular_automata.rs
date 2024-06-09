@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use rltk::RandomNumberGenerator;
 
-use crate::{spawner, Map, Position, Rect, TileType, SHOW_MAPGEN_VISUALIZER};
+use crate::{spawner, Map, Position, TileType, SHOW_MAPGEN_VISUALIZER};
 
 use super::{common, MapBuilder};
-
-const MIN_ROOM_SIZE: i32 = 8;
 
 pub struct CellularAutomataBuilder {
     map: Map,

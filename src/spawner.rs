@@ -9,7 +9,7 @@ use super::{
     AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, DefenseBonus, EquipmentSlot,
     Equippable, InflictsDamage, Item, MagicStats, MeleePowerBonus, Monster, Name, Player, Position,
     ProvidesHealing, ProvidesManaRestore, RandomTable, Ranged, Rect, Renderable, SerializeMe,
-    Viewshed, MAP_HEIGHT, MAP_WIDTH,
+    Viewshed, MAP_WIDTH,
 };
 use specs::saveload::{MarkedBuilder, SimpleMarker};
 
