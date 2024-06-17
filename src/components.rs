@@ -5,7 +5,7 @@ use specs::prelude::*;
 use specs::saveload::{ConvertSaveload, Marker};
 use specs_derive::*;
 
-#[derive(Component, ConvertSaveload, Clone, Debug, PartialEq)]
+#[derive(Component, ConvertSaveload, Clone, Debug, Copy, PartialEq)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
