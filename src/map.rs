@@ -8,6 +8,7 @@ pub enum TileType {
     Floor,
     VisitedFloor,
     DownStairs,
+    Debug(char),
 }
 
 pub const MAP_WIDTH: usize = 80;
@@ -145,6 +146,10 @@ pub fn draw_map(map: &Map, ctx: &mut Rltk) {
                 TileType::DownStairs => {
                     fg = RGB::from_f32(0., 1.0, 1.0);
                     glyph = rltk::to_cp437('>');
+                }
+                TileType::Debug(dbg_glyph) => {
+                    fg = RGB::from_f32(1.0, 1.0, 1.0);
+                    glyph = rltk::to_cp437(*dbg_glyph);
                 }
             }
 

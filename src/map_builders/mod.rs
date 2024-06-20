@@ -17,6 +17,8 @@ mod drunkard;
 use drunkard::DrunkardsWalkBuilder;
 mod maze;
 use maze::MazeBuilder;
+mod voronoi_cell;
+use voronoi_cell::VoronoiCellBuilder;
 use specs::World;
 mod common;
 
@@ -46,6 +48,9 @@ pub fn random_builder(new_depth: i32) -> Box<dyn MapBuilder> {
         11 => Box::new(DLABuilder::walk_outwards(new_depth)),
         12 => Box::new(DLABuilder::central_attractor(new_depth)),
         13 => Box::new(DLABuilder::insectoid(new_depth)),
+        14 => Box::new(VoronoiCellBuilder::pythagoras(new_depth)),
+        15 => Box::new(VoronoiCellBuilder::manhattan(new_depth)),
+        16 => Box::new(VoronoiCellBuilder::chebyshev(new_depth)),
         _ => Box::new(SimpleMapBuilder::new(new_depth))
     }
 }
