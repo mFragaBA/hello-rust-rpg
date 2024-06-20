@@ -4,7 +4,9 @@ use crate::{spawner, Position, SHOW_MAPGEN_VISUALIZER};
 
 use super::common;
 use super::MapBuilder;
-use super::{Map, Rect, TileType};
+use super::common::Symmetry;
+use super::common::paint;
+use super::{Map, TileType};
 use rltk::RandomNumberGenerator;
 use specs::World;
 
@@ -23,14 +25,6 @@ pub enum DLAAlgorithm {
     CentralAttractor,
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
-pub enum DLASymmetry {
-    None,
-    Horizontal,
-    Vertical, 
-    Both,
-}
-
 pub struct DLABuilder {
     map: Map,
     starting_position: Position,
@@ -40,7 +34,7 @@ pub struct DLABuilder {
     algorithm: DLAAlgorithm,
     /// Specifies how many floor tiles we "paint" in one go
     brush_size: i32,
-    symmetry: DLASymmetry,
+    symmetry: Symmetry,
     /// Lower bound percentage of the tiles that must be floor tiles
     floor_percent: f32,
 }
@@ -90,7 +84,7 @@ impl DLABuilder {
             noise_areas: HashMap::new(),
             algorithm: DLAAlgorithm::WalkInwards,
             brush_size: 1,
-            symmetry: DLASymmetry::Vertical,
+            symmetry: Symmetry::Vertical,
             floor_percent: 0.25,
         }
     }
@@ -104,7 +98,7 @@ impl DLABuilder {
             noise_areas: HashMap::new(),
             algorithm: DLAAlgorithm::WalkOutwards,
             brush_size: 2,
-            symmetry: DLASymmetry::None,
+            symmetry: Symmetry::None,
             floor_percent: 0.25,
         }
     }
@@ -118,7 +112,7 @@ impl DLABuilder {
             noise_areas: HashMap::new(),
             algorithm: DLAAlgorithm::CentralAttractor,
             brush_size: 2,
-            symmetry: DLASymmetry::Both,
+            symmetry: Symmetry::Both,
             floor_percent: 0.25,
         }
     }
@@ -132,7 +126,7 @@ impl DLABuilder {
             noise_areas: HashMap::new(),
             algorithm: DLAAlgorithm::CentralAttractor,
             brush_size: 2,
-            symmetry: DLASymmetry::Horizontal,
+            symmetry: Symmetry::Horizontal,
             floor_percent: 0.25,
         }
     }
@@ -170,7 +164,7 @@ impl DLABuilder {
                     loop {
                         let drunk_pos_id = self.map.xy_idx(drunk_x, drunk_y);
                         if self.map.tiles[drunk_pos_id] == TileType::Floor {
-                            floor_count += self.paint(previous_pos_x, previous_pos_y);
+                            floor_count += paint(&mut self.map, self.symmetry, self.brush_size, previous_pos_x, previous_pos_y);
                             self.take_snapshot();
                             break;
                         }
@@ -207,7 +201,7 @@ impl DLABuilder {
                         drunk_pos_id = self.map.xy_idx(drunk_x, drunk_y)
                     }
 
-                    floor_count += self.paint(drunk_x, drunk_y);
+                    floor_count += paint(&mut self.map, self.symmetry, self.brush_size, drunk_x, drunk_y);
                     self.take_snapshot();
                 }
             },
@@ -234,7 +228,7 @@ impl DLABuilder {
                         pos_id = self.map.xy_idx(drunk_x, drunk_y);
                     }
 
-                    floor_count += self.paint(previous_pos_x, previous_pos_y);
+                    floor_count += paint(&mut self.map, self.symmetry, self.brush_size, previous_pos_x, previous_pos_y);
                     self.take_snapshot();
                 }
             }
@@ -249,65 +243,5 @@ impl DLABuilder {
 
         // Now build a noise map for use later when spawning entities
         self.noise_areas = common::generate_voronoi_spawn_regions(&self.map, &mut rng);
-    }
-
-    fn paint(&mut self, x: i32, y: i32) -> usize {
-        let mut painted_count = 0;
-        match self.symmetry {
-            DLASymmetry::None => painted_count += self.apply_paint(x, y),
-            DLASymmetry::Horizontal => {
-                let center_x = self.map.width / 2;
-                if x == center_x {
-                    painted_count += self.apply_paint(x, y)
-                } else {
-                    let dist_x = i32::abs(x - center_x);
-                    painted_count += self.apply_paint(center_x - dist_x, y);
-                    painted_count += self.apply_paint(center_x + dist_x, y);
-                }
-            },
-            DLASymmetry::Vertical => {
-                let center_y = self.map.height / 2;
-                if y == center_y {
-                    painted_count += self.apply_paint(x, y)
-                } else {
-                    let dist_y = i32::abs(y - center_y);
-                    painted_count += self.apply_paint(x, center_y - dist_y);
-                    painted_count += self.apply_paint(x, center_y + dist_y);
-                }
-            },
-            DLASymmetry::Both => {
-                let center_x = self.map.width / 2;
-                let center_y = self.map.height / 2;
-                if x == center_x && y == center_y {
-                    painted_count += self.apply_paint(x, y)
-                } else {
-                    let dist_x = i32::abs(y - center_y);
-                    painted_count += self.apply_paint(center_x - dist_x, y);
-                    painted_count += self.apply_paint(center_x + dist_x, y);
-                    let dist_y = i32::abs(y - center_y);
-                    painted_count += self.apply_paint(x, center_y - dist_y);
-                    painted_count += self.apply_paint(x, center_y + dist_y);
-                }
-            }
-        }
-        painted_count
-    }
-
-    fn apply_paint(&mut self, x_center: i32, y_center: i32) -> usize {
-        let mut painted_count = 0;
-        let half_brush = self.brush_size / 2;
-
-        for y in (y_center - half_brush)..=(y_center + half_brush) {
-            for x in (x_center - half_brush)..=(x_center + half_brush) {
-                if x >= 0 && x < self.map.width && y >= 0 && y < self.map.height {
-                    let pos_id = self.map.xy_idx(x, y);
-
-                    painted_count += (self.map.tiles[pos_id] == TileType::Wall) as usize;
-                    self.map.tiles[pos_id] = TileType::Floor;
-                }
-            }
-        }
-
-        painted_count
     }
 }

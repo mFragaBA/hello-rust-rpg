@@ -4,6 +4,14 @@ use std::{
     collections::HashMap,
 };
 
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum Symmetry {
+    None,
+    Horizontal,
+    Vertical, 
+    Both,
+}
+
 pub fn apply_room_to_map(map: &mut Map, room: &Rect) {
     for y in (room.y1 + 1)..=room.y2 {
         for x in (room.x1 + 1)..=room.x2 {
@@ -37,7 +45,7 @@ pub fn cull_unreachables_and_return_most_distant_tile(map: &mut Map, start_idx: 
     // Find all tiles reachable from the starting point
     let map_starts: Vec<usize> = vec![start_idx];
     let dijkstra_map = rltk::DijkstraMap::new(map.width, map.height, &map_starts, map, 200.0);
-    let mut exit_tile = (0, 0.0f32);
+    let mut exit_tile = (start_idx, 0.0f32);
     for (i, tile) in map.tiles.iter_mut().enumerate() {
         if *tile == TileType::Floor {
             let distance_to_start = dijkstra_map.map[i];
@@ -84,4 +92,64 @@ pub fn generate_voronoi_spawn_regions(
     }
 
     noise_areas
+}
+
+pub fn paint(map: &mut Map, symmetry_mode: Symmetry, brush_size: i32, x: i32, y: i32) -> usize {
+    let mut painted_count = 0;
+    match symmetry_mode {
+        Symmetry::None => painted_count += apply_paint(map, brush_size, x, y),
+        Symmetry::Horizontal => {
+            let center_x = map.width / 2;
+            if x == center_x {
+                painted_count += apply_paint(map, brush_size, x, y)
+            } else {
+                let dist_x = i32::abs(x - center_x);
+                painted_count += apply_paint(map, brush_size, center_x - dist_x, y);
+                painted_count += apply_paint(map, brush_size, center_x + dist_x, y);
+            }
+        },
+        Symmetry::Vertical => {
+            let center_y = map.height / 2;
+            if y == center_y {
+                painted_count += apply_paint(map, brush_size, x, y)
+            } else {
+                let dist_y = i32::abs(y - center_y);
+                painted_count += apply_paint(map, brush_size, x, center_y - dist_y);
+                painted_count += apply_paint(map, brush_size, x, center_y + dist_y);
+            }
+        },
+        Symmetry::Both => {
+            let center_x = map.width / 2;
+            let center_y = map.height / 2;
+            if x == center_x && y == center_y {
+                painted_count += apply_paint(map, brush_size, x, y)
+            } else {
+                let dist_x = i32::abs(x - center_x);
+                let dist_y = i32::abs(y - center_y);
+                painted_count += apply_paint(map, brush_size, center_x - dist_x, center_y - dist_y);
+                painted_count += apply_paint(map, brush_size, center_x - dist_x, center_y + dist_y);
+                painted_count += apply_paint(map, brush_size, center_x + dist_x, center_y - dist_y);
+                painted_count += apply_paint(map, brush_size, center_x + dist_x, center_y + dist_y);
+            }
+        }
+    }
+    painted_count
+}
+
+fn apply_paint(map: &mut Map, brush_size: i32, x_center: i32, y_center: i32) -> usize {
+    let mut painted_count = 0;
+    let half_brush = brush_size / 2;
+
+    for y in (y_center - half_brush)..=(y_center + half_brush) {
+        for x in (x_center - half_brush)..=(x_center + half_brush) {
+            if x >= 0 && x < map.width && y >= 0 && y < map.height {
+                let pos_id = map.xy_idx(x, y);
+
+                painted_count += (map.tiles[pos_id] == TileType::Wall) as usize;
+                map.tiles[pos_id] = TileType::Floor;
+            }
+        }
+    }
+
+    painted_count
 }

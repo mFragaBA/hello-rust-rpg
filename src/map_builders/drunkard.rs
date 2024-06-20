@@ -4,8 +4,15 @@ use rltk::RandomNumberGenerator;
 
 use crate::{spawner, Map, Position, TileType, SHOW_MAPGEN_VISUALIZER};
 
-use super::{common, MapBuilder};
+use super::{common::{self, Symmetry, paint}, MapBuilder};
 
+/// Defines whether the drunkards are spawned from the center of the map or a random position.
+///
+/// While random positions might lead to more interesting maps, it might generate many maps where
+/// the player is trapped (since it's spawned in the center of the map), or where irrelevant
+/// regions are generated because they're note connected. On the other hand, `StartingPoint`
+/// ensures the generated map is connected and the player is not trapped, similar to the DLA map
+/// builder.
 #[derive(PartialEq, Copy, Clone)]
 pub enum DrunkSpawnMode {
     StartingPoint,
@@ -15,7 +22,9 @@ pub enum DrunkSpawnMode {
 pub struct DrunkardSettings {
     pub spawn_mode: DrunkSpawnMode,
     pub drunken_lifetime: i32,
-    pub floor_percent: f32
+    pub floor_percent: f32,
+    pub brush_size: i32,
+    pub symmetry: Symmetry,
 }
 
 pub struct DrunkardsWalkBuilder {
@@ -78,7 +87,9 @@ impl DrunkardsWalkBuilder {
         Self::new(new_depth, DrunkardSettings { 
             spawn_mode: DrunkSpawnMode::StartingPoint, 
             drunken_lifetime: 400, 
-            floor_percent: 0.5 
+            floor_percent: 0.5,
+            brush_size: 1,
+            symmetry: Symmetry::None,
         })
     }
 
@@ -86,7 +97,9 @@ impl DrunkardsWalkBuilder {
         Self::new(new_depth, DrunkardSettings { 
             spawn_mode: DrunkSpawnMode::Random, 
             drunken_lifetime: 400, 
-            floor_percent: 0.5 
+            floor_percent: 0.5 ,
+            brush_size: 1,
+            symmetry: Symmetry::None,
         })
     }
 
@@ -94,7 +107,29 @@ impl DrunkardsWalkBuilder {
         Self::new(new_depth, DrunkardSettings { 
             spawn_mode: DrunkSpawnMode::Random, 
             drunken_lifetime: 100, 
-            floor_percent: 0.4 
+            floor_percent: 0.4,
+            brush_size: 1,
+            symmetry: Symmetry::None,
+        })
+    }
+
+    pub fn wider_passages(new_depth: i32) -> DrunkardsWalkBuilder {
+        Self::new(new_depth, DrunkardSettings { 
+            spawn_mode: DrunkSpawnMode::Random, 
+            drunken_lifetime: 100, 
+            floor_percent: 0.4,
+            brush_size: 2,
+            symmetry: Symmetry::None,
+        })
+    }
+
+    pub fn fearful_symmetry(new_depth: i32) -> DrunkardsWalkBuilder {
+        Self::new(new_depth, DrunkardSettings { 
+            spawn_mode: DrunkSpawnMode::Random, 
+            drunken_lifetime: 100, 
+            floor_percent: 0.4,
+            brush_size: 1,
+            symmetry: Symmetry::Both,
         })
     }
 
@@ -122,6 +157,7 @@ impl DrunkardsWalkBuilder {
         let start_idx = self
             .map
             .xy_idx(self.starting_position.x, self.starting_position.y);
+
         self.map.tiles[start_idx] = TileType::Floor;
 
         let total_tiles = self.map.width * self.map.height;
@@ -152,6 +188,10 @@ impl DrunkardsWalkBuilder {
                 if self.map.tiles[drunk_pos_id] == TileType::Wall {
                     did_something = true;
                 }
+
+                // We keep the double draw so the Downstairs symbol still shows the drunkard's
+                // path, while applying the symmetry feature
+                paint(&mut self.map, self.settings.symmetry, self.settings.brush_size, drunk_x, drunk_y);
                 self.map.tiles[drunk_pos_id] = TileType::DownStairs;
 
                 let rolled_direction = rng.roll_dice(1, 4);
