@@ -160,7 +160,7 @@ impl GameState for State {
 
                 self.mapgen_timer += ctx.frame_time_ms;
                 // change index every 150ms
-                if self.mapgen_timer > 150.0 {
+                if self.mapgen_timer > 30.0 {
                     self.mapgen_timer = 0.0;
                     self.mapgen_index += 1;
                     if self.mapgen_index >= self.mapgen_history.len() {
@@ -539,8 +539,6 @@ impl State {
             let mut player_entity_writer = self.ecs.write_resource::<Entity>();
             *player_entity_writer = player_entity;
         }
-
-        self.generate_world_map(1);
     }
 }
 
