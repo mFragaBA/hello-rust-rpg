@@ -1,15 +1,19 @@
 use std::collections::HashMap;
 
 use crate::map_builders::common;
-use crate::{spawner, Position, SHOW_MAPGEN_VISUALIZER, TileType};
+use crate::{spawner, Position, TileType, SHOW_MAPGEN_VISUALIZER};
 
-use super::MapBuilder;
 use super::Map;
+use super::MapBuilder;
 use rltk::RandomNumberGenerator;
 use specs::World;
 
 #[derive(PartialEq, Eq, Copy, Clone)]
-pub enum DistanceAlgorithm { Pythagoras, Manhattan, Chebyshev }
+pub enum DistanceAlgorithm {
+    Pythagoras,
+    Manhattan,
+    Chebyshev,
+}
 
 pub struct VoronoiCellBuilder {
     map: Map,
@@ -99,7 +103,7 @@ impl VoronoiCellBuilder {
         // Select `n_seeds` random positions in the map. We'll use `rltk::Point` since we can reuse
         // it with `rltk::DistanceAlg`
         let n_seeds = self.n_seeds;
-        let mut voronoi_seeds : Vec<(usize, rltk::Point)> = Vec::with_capacity(n_seeds);
+        let mut voronoi_seeds: Vec<(usize, rltk::Point)> = Vec::with_capacity(n_seeds);
 
         while voronoi_seeds.len() < n_seeds {
             let random_x = rng.roll_dice(1, self.map.width - 3) + 1;
@@ -107,14 +111,19 @@ impl VoronoiCellBuilder {
             let seed_idx = self.map.xy_idx(random_x, random_y);
 
             // Ignore duplicates
-            if voronoi_seeds.iter().find(|(existing_seed_idx, _)| *existing_seed_idx == seed_idx).is_none() {
+            if voronoi_seeds
+                .iter()
+                .find(|(existing_seed_idx, _)| *existing_seed_idx == seed_idx)
+                .is_none()
+            {
                 voronoi_seeds.push((seed_idx, rltk::Point::new(random_x, random_y)));
             }
         }
 
         // For each point in the map, set as its region the one represented by the closest initial
         // random position
-        let mut voronoi_regions : Vec<usize> = vec![0; self.map.width as usize * self.map.height as usize];
+        let mut voronoi_regions: Vec<usize> =
+            vec![0; self.map.width as usize * self.map.height as usize];
 
         for (tile_idx, tile_region) in voronoi_regions.iter_mut().enumerate() {
             let tile_x = tile_idx as i32 % self.map.width;
@@ -125,21 +134,28 @@ impl VoronoiCellBuilder {
                 .enumerate()
                 .map(|(region, (_, seed_point))| {
                     let distance = match self.distance_algorithm {
-                        DistanceAlgorithm::Pythagoras => 
-                            rltk::DistanceAlg::PythagorasSquared.distance2d(tile_point, *seed_point),
-                        DistanceAlgorithm::Manhattan =>
-                            rltk::DistanceAlg::Manhattan.distance2d(tile_point, *seed_point),
-                        DistanceAlgorithm::Chebyshev =>
-                            rltk::DistanceAlg::Chebyshev.distance2d(tile_point, *seed_point),
+                        DistanceAlgorithm::Pythagoras => {
+                            rltk::DistanceAlg::PythagorasSquared.distance2d(tile_point, *seed_point)
+                        }
+                        DistanceAlgorithm::Manhattan => {
+                            rltk::DistanceAlg::Manhattan.distance2d(tile_point, *seed_point)
+                        }
+                        DistanceAlgorithm::Chebyshev => {
+                            rltk::DistanceAlg::Chebyshev.distance2d(tile_point, *seed_point)
+                        }
                     };
                     (region, distance)
                 })
-                .min_by(|(_, distance1), (_, distance2)| (*distance1).partial_cmp(distance2).expect("Should be able to compare since both are supposed to be non-Nan"))
+                .min_by(|(_, distance1), (_, distance2)| {
+                    (*distance1)
+                        .partial_cmp(distance2)
+                        .expect("Should be able to compare since both are supposed to be non-Nan")
+                })
                 .expect("Should always have a minimum");
 
             *tile_region = closest_region.0;
         }
-        
+
         // Now, for each point in the map, count the amount of neighbors of different region. If
         // there are none, it's safe to say it's a floor tile. We'll also do the same if there is
         // only one to ensure all regions stay connected. Otherwise it stays as a wall.
@@ -152,8 +168,10 @@ impl VoronoiCellBuilder {
 
                 neighbors_count += (voronoi_regions[tile_idx + 1] != tile_region) as usize;
                 neighbors_count += (voronoi_regions[tile_idx - 1] != tile_region) as usize;
-                neighbors_count += (voronoi_regions[tile_idx + self.map.width as usize] != tile_region) as usize;
-                neighbors_count += (voronoi_regions[tile_idx - self.map.width as usize] != tile_region) as usize;
+                neighbors_count +=
+                    (voronoi_regions[tile_idx + self.map.width as usize] != tile_region) as usize;
+                neighbors_count +=
+                    (voronoi_regions[tile_idx - self.map.width as usize] != tile_region) as usize;
 
                 if neighbors_count < 2 {
                     self.map.tiles[tile_idx] = TileType::Floor;
@@ -177,6 +195,5 @@ impl VoronoiCellBuilder {
 
         // Now build a noise map for use later when spawning entities
         self.noise_areas = common::generate_voronoi_spawn_regions(&self.map, &mut rng);
-
     }
 }

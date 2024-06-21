@@ -9,7 +9,9 @@ pub fn load_rex_map(new_depth: i32, xp_file: &XpFile) -> Map {
     for layer in &xp_file.layers {
         for y in 0..layer.height {
             for x in 0..layer.width {
-                let cell = layer.get(x, y).expect("Should be able to index layer in bounds");
+                let cell = layer
+                    .get(x, y)
+                    .expect("Should be able to index layer in bounds");
 
                 // Check we're in-bounds
                 if x < map.width as usize && y < map.height as usize {
@@ -19,7 +21,7 @@ pub fn load_rex_map(new_depth: i32, xp_file: &XpFile) -> Map {
                     match cell.ch {
                         32 => map.tiles[idx] = TileType::Floor,
                         35 => map.tiles[idx] = TileType::Wall,
-                        _ => { /* do nothing */ },
+                        _ => { /* do nothing */ }
                     }
                 }
             }

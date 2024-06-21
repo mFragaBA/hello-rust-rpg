@@ -528,9 +528,7 @@ impl State {
         // Clear the log
         {
             let mut gamelog = self.ecs.fetch_mut::<gamelog::GameLog>();
-            gamelog
-                .entries
-                .clear();
+            gamelog.entries.clear();
         }
 
         // Spawn a new player

@@ -8,7 +8,7 @@ use std::{
 pub enum Symmetry {
     None,
     Horizontal,
-    Vertical, 
+    Vertical,
     Both,
 }
 
@@ -107,7 +107,7 @@ pub fn paint(map: &mut Map, symmetry_mode: Symmetry, brush_size: i32, x: i32, y:
                 painted_count += apply_paint(map, brush_size, center_x - dist_x, y);
                 painted_count += apply_paint(map, brush_size, center_x + dist_x, y);
             }
-        },
+        }
         Symmetry::Vertical => {
             let center_y = map.height / 2;
             if y == center_y {
@@ -117,7 +117,7 @@ pub fn paint(map: &mut Map, symmetry_mode: Symmetry, brush_size: i32, x: i32, y:
                 painted_count += apply_paint(map, brush_size, x, center_y - dist_y);
                 painted_count += apply_paint(map, brush_size, x, center_y + dist_y);
             }
-        },
+        }
         Symmetry::Both => {
             let center_x = map.width / 2;
             let center_y = map.height / 2;

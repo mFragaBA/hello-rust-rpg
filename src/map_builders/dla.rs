@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use crate::{spawner, Position, SHOW_MAPGEN_VISUALIZER};
 
 use super::common;
-use super::MapBuilder;
-use super::common::Symmetry;
 use super::common::paint;
+use super::common::Symmetry;
+use super::MapBuilder;
 use super::{Map, TileType};
 use rltk::RandomNumberGenerator;
 use specs::World;
@@ -139,7 +139,9 @@ impl DLABuilder {
             x: self.map.width / 2,
             y: self.map.height / 2,
         };
-        let start_idx = self.map.xy_idx(self.starting_position.x, self.starting_position.y);
+        let start_idx = self
+            .map
+            .xy_idx(self.starting_position.x, self.starting_position.y);
         self.take_snapshot();
 
         self.map.tiles[start_idx] = TileType::Floor;
@@ -150,7 +152,8 @@ impl DLABuilder {
         self.take_snapshot();
 
         let mut floor_count = 5;
-        let desired_floor_count = ((self.map.width * self.map.height) as f32 * self.floor_percent) as usize;
+        let desired_floor_count =
+            ((self.map.width * self.map.height) as f32 * self.floor_percent) as usize;
 
         // Apply each algorithm case
         match self.algorithm {
@@ -164,7 +167,13 @@ impl DLABuilder {
                     loop {
                         let drunk_pos_id = self.map.xy_idx(drunk_x, drunk_y);
                         if self.map.tiles[drunk_pos_id] == TileType::Floor {
-                            floor_count += paint(&mut self.map, self.symmetry, self.brush_size, previous_pos_x, previous_pos_y);
+                            floor_count += paint(
+                                &mut self.map,
+                                self.symmetry,
+                                self.brush_size,
+                                previous_pos_x,
+                                previous_pos_y,
+                            );
                             self.take_snapshot();
                             break;
                         }
@@ -182,7 +191,7 @@ impl DLABuilder {
                         }
                     }
                 }
-            },
+            }
             DLAAlgorithm::WalkOutwards => {
                 while floor_count < desired_floor_count {
                     let mut drunk_x = self.starting_position.x;
@@ -201,10 +210,16 @@ impl DLABuilder {
                         drunk_pos_id = self.map.xy_idx(drunk_x, drunk_y)
                     }
 
-                    floor_count += paint(&mut self.map, self.symmetry, self.brush_size, drunk_x, drunk_y);
+                    floor_count += paint(
+                        &mut self.map,
+                        self.symmetry,
+                        self.brush_size,
+                        drunk_x,
+                        drunk_y,
+                    );
                     self.take_snapshot();
                 }
-            },
+            }
             DLAAlgorithm::CentralAttractor => {
                 while floor_count < desired_floor_count {
                     let mut drunk_x = rng.roll_dice(1, self.map.width - 3) + 1;
@@ -214,9 +229,9 @@ impl DLABuilder {
                     let mut previous_pos_y = drunk_y;
 
                     let mut path = rltk::line2d(
-                        rltk::LineAlg::Bresenham, 
-                        rltk::Point::new(drunk_x, drunk_y), 
-                        rltk::Point::new(self.starting_position.x, self.starting_position.y)
+                        rltk::LineAlg::Bresenham,
+                        rltk::Point::new(drunk_x, drunk_y),
+                        rltk::Point::new(self.starting_position.x, self.starting_position.y),
                     );
 
                     while self.map.tiles[pos_id] == TileType::Wall && !path.is_empty() {
@@ -228,7 +243,13 @@ impl DLABuilder {
                         pos_id = self.map.xy_idx(drunk_x, drunk_y);
                     }
 
-                    floor_count += paint(&mut self.map, self.symmetry, self.brush_size, previous_pos_x, previous_pos_y);
+                    floor_count += paint(
+                        &mut self.map,
+                        self.symmetry,
+                        self.brush_size,
+                        previous_pos_x,
+                        previous_pos_y,
+                    );
                     self.take_snapshot();
                 }
             }

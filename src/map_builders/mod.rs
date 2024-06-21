@@ -20,8 +20,8 @@ use maze::MazeBuilder;
 mod voronoi_cell;
 use voronoi_cell::VoronoiCellBuilder;
 mod wave_function_collapse;
-use wave_function_collapse::WaveFunctionCollapseBuilder;
 use specs::World;
+use wave_function_collapse::WaveFunctionCollapseBuilder;
 mod common;
 
 pub trait MapBuilder {

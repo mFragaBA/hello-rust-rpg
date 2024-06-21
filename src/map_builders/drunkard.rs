@@ -4,7 +4,10 @@ use rltk::RandomNumberGenerator;
 
 use crate::{spawner, Map, Position, TileType, SHOW_MAPGEN_VISUALIZER};
 
-use super::{common::{self, Symmetry, paint}, MapBuilder};
+use super::{
+    common::{self, paint, Symmetry},
+    MapBuilder,
+};
 
 /// Defines whether the drunkards are spawned from the center of the map or a random position.
 ///
@@ -84,53 +87,68 @@ impl DrunkardsWalkBuilder {
     }
 
     pub fn open_area(new_depth: i32) -> DrunkardsWalkBuilder {
-        Self::new(new_depth, DrunkardSettings { 
-            spawn_mode: DrunkSpawnMode::StartingPoint, 
-            drunken_lifetime: 400, 
-            floor_percent: 0.5,
-            brush_size: 1,
-            symmetry: Symmetry::None,
-        })
+        Self::new(
+            new_depth,
+            DrunkardSettings {
+                spawn_mode: DrunkSpawnMode::StartingPoint,
+                drunken_lifetime: 400,
+                floor_percent: 0.5,
+                brush_size: 1,
+                symmetry: Symmetry::None,
+            },
+        )
     }
 
     pub fn open_halls(new_depth: i32) -> DrunkardsWalkBuilder {
-        Self::new(new_depth, DrunkardSettings { 
-            spawn_mode: DrunkSpawnMode::Random, 
-            drunken_lifetime: 400, 
-            floor_percent: 0.5 ,
-            brush_size: 1,
-            symmetry: Symmetry::None,
-        })
+        Self::new(
+            new_depth,
+            DrunkardSettings {
+                spawn_mode: DrunkSpawnMode::Random,
+                drunken_lifetime: 400,
+                floor_percent: 0.5,
+                brush_size: 1,
+                symmetry: Symmetry::None,
+            },
+        )
     }
 
     pub fn widening_passages(new_depth: i32) -> DrunkardsWalkBuilder {
-        Self::new(new_depth, DrunkardSettings { 
-            spawn_mode: DrunkSpawnMode::Random, 
-            drunken_lifetime: 100, 
-            floor_percent: 0.4,
-            brush_size: 1,
-            symmetry: Symmetry::None,
-        })
+        Self::new(
+            new_depth,
+            DrunkardSettings {
+                spawn_mode: DrunkSpawnMode::Random,
+                drunken_lifetime: 100,
+                floor_percent: 0.4,
+                brush_size: 1,
+                symmetry: Symmetry::None,
+            },
+        )
     }
 
     pub fn wider_passages(new_depth: i32) -> DrunkardsWalkBuilder {
-        Self::new(new_depth, DrunkardSettings { 
-            spawn_mode: DrunkSpawnMode::Random, 
-            drunken_lifetime: 100, 
-            floor_percent: 0.4,
-            brush_size: 2,
-            symmetry: Symmetry::None,
-        })
+        Self::new(
+            new_depth,
+            DrunkardSettings {
+                spawn_mode: DrunkSpawnMode::Random,
+                drunken_lifetime: 100,
+                floor_percent: 0.4,
+                brush_size: 2,
+                symmetry: Symmetry::None,
+            },
+        )
     }
 
     pub fn fearful_symmetry(new_depth: i32) -> DrunkardsWalkBuilder {
-        Self::new(new_depth, DrunkardSettings { 
-            spawn_mode: DrunkSpawnMode::Random, 
-            drunken_lifetime: 100, 
-            floor_percent: 0.4,
-            brush_size: 1,
-            symmetry: Symmetry::Both,
-        })
+        Self::new(
+            new_depth,
+            DrunkardSettings {
+                spawn_mode: DrunkSpawnMode::Random,
+                drunken_lifetime: 100,
+                floor_percent: 0.4,
+                brush_size: 1,
+                symmetry: Symmetry::Both,
+            },
+        )
     }
 
     /// The basic idea behind the algorithm is simple:
@@ -191,7 +209,13 @@ impl DrunkardsWalkBuilder {
 
                 // We keep the double draw so the Downstairs symbol still shows the drunkard's
                 // path, while applying the symmetry feature
-                paint(&mut self.map, self.settings.symmetry, self.settings.brush_size, drunk_x, drunk_y);
+                paint(
+                    &mut self.map,
+                    self.settings.symmetry,
+                    self.settings.brush_size,
+                    drunk_x,
+                    drunk_y,
+                );
                 self.map.tiles[drunk_pos_id] = TileType::DownStairs;
 
                 let rolled_direction = rng.roll_dice(1, 4);

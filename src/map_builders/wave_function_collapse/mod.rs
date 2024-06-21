@@ -67,7 +67,10 @@ impl WaveFunctionCollapseBuilder {
         let mut rng = RandomNumberGenerator::new();
 
         // TODO: build process goes here
-        self.map = load_rex_map(self.depth, &rltk::rex::XpFile::from_resource("../resources/wfc-demo1.xp").unwrap());
+        self.map = load_rex_map(
+            self.depth,
+            &rltk::rex::XpFile::from_resource("../resources/wfc-demo1.xp").unwrap(),
+        );
         self.take_snapshot();
 
         // Pick a starting position. Start at the middle and walk left until we find an open tile

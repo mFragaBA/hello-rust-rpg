@@ -1,8 +1,6 @@
 use crate::EntityMoved;
 
-use super::{
-    Confusion, Map, Monster, ParticleBuilder, Position, RunState, Viewshed, WantsToMelee,
-};
+use super::{Confusion, Map, Monster, ParticleBuilder, Position, RunState, Viewshed, WantsToMelee};
 use rltk::Point;
 use specs::prelude::*;
 
