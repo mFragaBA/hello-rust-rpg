@@ -160,7 +160,7 @@ impl GameState for State {
 
                 self.mapgen_timer += ctx.frame_time_ms;
                 // change index every 150ms
-                if self.mapgen_timer > 15.0 {
+                if self.mapgen_timer > 2000.0 {
                     self.mapgen_timer = 0.0;
                     self.mapgen_index += 1;
                     if self.mapgen_index >= self.mapgen_history.len() {

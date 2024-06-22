@@ -2,7 +2,7 @@ use rltk::{Rltk, RGB};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub enum TileType {
     Wall,
     Floor,
