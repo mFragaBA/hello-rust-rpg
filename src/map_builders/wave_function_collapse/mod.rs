@@ -2,9 +2,12 @@ use std::collections::HashMap;
 
 use rltk::RandomNumberGenerator;
 
-use crate::{spawner, Map, Position, TileType, SHOW_MAPGEN_VISUALIZER};
+use crate::{
+    map_builders::wave_function_collapse::constraints::patterns_to_constraints, spawner, Map,
+    Position, TileType, SHOW_MAPGEN_VISUALIZER,
+};
 
-use self::constraints::render_pattern_to_map;
+use self::constraints::{render_chunk_to_map, render_pattern_to_map, MapChunk};
 
 use super::{common, MapBuilder};
 
@@ -85,6 +88,10 @@ impl WaveFunctionCollapseBuilder {
 
         self.render_tile_gallery(&patterns, CHUNK_SIZE);
 
+        let constraints = patterns_to_constraints(patterns, CHUNK_SIZE);
+
+        self.render_constraint_gallery(&constraints, CHUNK_SIZE);
+
         // Pick a starting position. Start at the middle and walk left until we find an open tile
         self.starting_position = Position {
             x: self.map.width / 2,
@@ -117,6 +124,39 @@ impl WaveFunctionCollapseBuilder {
         let mut y = 1;
         while counter < patterns.len() {
             render_pattern_to_map(&mut self.map, &patterns[counter], chunk_size, x, y);
+
+            x += chunk_size + 1;
+            if x + chunk_size >= self.map.width {
+                // Move to next row
+                x = 1;
+                y += chunk_size + 1;
+
+                if y + chunk_size >= self.map.height {
+                    self.take_snapshot();
+                    self.map = Map::new(0);
+
+                    x = 1;
+                    y = 1;
+                }
+            }
+
+            counter += 1;
+        }
+
+        self.take_snapshot();
+    }
+
+    /// Renders all chunks from `constraints` into the snapshotted map
+    ///
+    /// It tries fitting as many as possible per row and as many rows per map. If exceeded
+    /// it starts from a fresh "gallery page" a.k.a. a new map.
+    fn render_constraint_gallery(&mut self, constraints: &Vec<MapChunk>, chunk_size: i32) {
+        self.map = Map::new(0);
+        let mut counter = 0;
+        let mut x = 1;
+        let mut y = 1;
+        while counter < constraints.len() {
+            render_chunk_to_map(&mut self.map, &constraints[counter], chunk_size, x, y);
 
             x += chunk_size + 1;
             if x + chunk_size >= self.map.width {
