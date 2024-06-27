@@ -15,6 +15,8 @@ mod image_loader;
 use image_loader::load_rex_map;
 mod constraints;
 use constraints::build_patterns;
+mod solver;
+use solver::Solver;
 
 pub struct WaveFunctionCollapseBuilder {
     map: Map,
@@ -91,6 +93,19 @@ impl WaveFunctionCollapseBuilder {
         let constraints = patterns_to_constraints(patterns, CHUNK_SIZE);
 
         self.render_constraint_gallery(&constraints, CHUNK_SIZE);
+
+        // Now actually write the map
+        self.map = Map::new(self.depth);
+        loop {
+            let mut solver = Solver::new(constraints.clone(), CHUNK_SIZE, &self.map);
+            while !solver.step(&mut self.map, &mut rng) {
+                self.take_snapshot();
+            }
+            self.take_snapshot();
+
+            // If it's stuck at an impossible condition, try again. Otherwise exit
+            if solver.possible { break; }
+        }
 
         // Pick a starting position. Start at the middle and walk left until we find an open tile
         self.starting_position = Position {
